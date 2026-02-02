@@ -8,10 +8,9 @@ import {
   Stethoscope, 
   Plus, 
   Loader2, 
-  Clock,
-  User,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Mic
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -31,15 +30,20 @@ import {
 } from "@/components/ui/collapsible";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   useWorkOrderDiagnostics, 
   useCreateDiagnostic 
 } from "@/hooks/useWorkOrderDiagnostics";
 import { useUpdateWorkOrder } from "@/hooks/useWorkOrders";
+import { AudioRecorder } from "./AudioRecorder";
 import type { WorkflowStep } from "@/hooks/useWorkOrders";
 
 const diagnosisSchema = z.object({
   technical_report: z.string().min(10, "O parecer técnico deve ter pelo menos 10 caracteres"),
+  transcription_raw: z.string().optional(),
+  transcription_refined: z.string().optional(),
+  voice_memo_url: z.string().optional(),
 });
 
 type DiagnosisFormData = z.infer<typeof diagnosisSchema>;
@@ -48,15 +52,18 @@ interface WorkOrderDiagnosisProps {
   workOrderId: string;
   currentStep: WorkflowStep;
   canEdit: boolean;
+  vehicleInfo?: string;
 }
 
 export function WorkOrderDiagnosis({ 
   workOrderId, 
   currentStep,
-  canEdit 
+  canEdit,
+  vehicleInfo 
 }: WorkOrderDiagnosisProps) {
   const [showForm, setShowForm] = useState(false);
   const [expandedDiagnosis, setExpandedDiagnosis] = useState<string | null>(null);
+  const [inputMode, setInputMode] = useState<"text" | "audio">("text");
   
   const { data: diagnostics, isLoading } = useWorkOrderDiagnostics(workOrderId);
   const createDiagnostic = useCreateDiagnostic();
@@ -66,6 +73,9 @@ export function WorkOrderDiagnosis({
     resolver: zodResolver(diagnosisSchema),
     defaultValues: {
       technical_report: "",
+      transcription_raw: "",
+      transcription_refined: "",
+      voice_memo_url: "",
     },
   });
 
@@ -74,11 +84,21 @@ export function WorkOrderDiagnosis({
     currentStep === "CHECKIN_CONCLUIDO"
   );
 
+  const handleTranscriptionComplete = (raw: string, refined: string, audioUrl: string) => {
+    form.setValue("technical_report", refined || raw);
+    form.setValue("transcription_raw", raw);
+    form.setValue("transcription_refined", refined);
+    form.setValue("voice_memo_url", audioUrl);
+  };
+
   const onSubmit = async (data: DiagnosisFormData) => {
     try {
       await createDiagnostic.mutateAsync({
         work_order_id: workOrderId,
         technical_report: data.technical_report,
+        transcription_raw: data.transcription_raw || null,
+        transcription_refined: data.transcription_refined || null,
+        voice_memo_url: data.voice_memo_url || null,
       });
 
       // Update workflow step to awaiting quote
@@ -91,6 +111,7 @@ export function WorkOrderDiagnosis({
 
       form.reset();
       setShowForm(false);
+      setInputMode("text");
     } catch (error) {
       // Error handled by hooks
     }
@@ -129,53 +150,125 @@ export function WorkOrderDiagnosis({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="technical_report"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Parecer Técnico *</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Descreva os problemas encontrados e as soluções propostas..."
-                          className="min-h-[150px] resize-none"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+            <Tabs value={inputMode} onValueChange={(v) => setInputMode(v as "text" | "audio")}>
+              <TabsList className="mb-4">
+                <TabsTrigger value="text">Digitar</TabsTrigger>
+                <TabsTrigger value="audio" className="gap-2">
+                  <Mic className="h-4 w-4" />
+                  Gravar Áudio
+                </TabsTrigger>
+              </TabsList>
 
-                <div className="flex justify-end gap-2">
-                  <Button 
-                    type="button" 
-                    variant="outline"
-                    onClick={() => {
-                      form.reset();
-                      setShowForm(false);
-                    }}
-                  >
-                    Cancelar
-                  </Button>
-                  <Button 
-                    type="submit"
-                    disabled={createDiagnostic.isPending}
-                  >
-                    {createDiagnostic.isPending ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Salvando...
-                      </>
-                    ) : (
-                      "Salvar Diagnóstico"
+              <TabsContent value="audio" className="mt-0">
+                <AudioRecorder
+                  onTranscriptionComplete={handleTranscriptionComplete}
+                  vehicleContext={vehicleInfo}
+                  disabled={createDiagnostic.isPending}
+                />
+              </TabsContent>
+
+              <TabsContent value="text" className="mt-0">
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                    <FormField
+                      control={form.control}
+                      name="technical_report"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Parecer Técnico *</FormLabel>
+                          <FormControl>
+                            <Textarea
+                              placeholder="Descreva os problemas encontrados e as soluções propostas..."
+                              className="min-h-[150px] resize-none"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <div className="flex justify-end gap-2">
+                      <Button 
+                        type="button" 
+                        variant="outline"
+                        onClick={() => {
+                          form.reset();
+                          setShowForm(false);
+                          setInputMode("text");
+                        }}
+                      >
+                        Cancelar
+                      </Button>
+                      <Button 
+                        type="submit"
+                        disabled={createDiagnostic.isPending}
+                      >
+                        {createDiagnostic.isPending ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Salvando...
+                          </>
+                        ) : (
+                          "Salvar Diagnóstico"
+                        )}
+                      </Button>
+                    </div>
+                  </form>
+                </Form>
+              </TabsContent>
+            </Tabs>
+
+            {/* Show form when audio mode has transcription ready */}
+            {inputMode === "audio" && form.watch("technical_report") && (
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="mt-4 space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="technical_report"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Parecer Técnico (refinado pela IA)</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            className="min-h-[150px] resize-none"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
                     )}
-                  </Button>
-                </div>
-              </form>
-            </Form>
+                  />
+
+                  <div className="flex justify-end gap-2">
+                    <Button 
+                      type="button" 
+                      variant="outline"
+                      onClick={() => {
+                        form.reset();
+                        setShowForm(false);
+                        setInputMode("text");
+                      }}
+                    >
+                      Cancelar
+                    </Button>
+                    <Button 
+                      type="submit"
+                      disabled={createDiagnostic.isPending}
+                    >
+                      {createDiagnostic.isPending ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Salvando...
+                        </>
+                      ) : (
+                        "Salvar Diagnóstico"
+                      )}
+                    </Button>
+                  </div>
+                </form>
+              </Form>
+            )}
           </CardContent>
         </Card>
       )}

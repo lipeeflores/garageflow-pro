@@ -1,1 +1,4 @@
 project_id = "jodyrgwdpxrjlglepzjh"
+
+[functions.transcribe-audio]
+verify_jwt = true
