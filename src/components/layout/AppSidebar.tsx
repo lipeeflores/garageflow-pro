@@ -8,41 +8,57 @@ import {
   BarChart3, 
   Settings,
   Clock,
-  Bell,
-  LogOut,
   ChevronLeft,
   Menu
 } from "lucide-react";
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useWorkOrders } from "@/hooks/useWorkOrders";
 
 interface NavItem {
   title: string;
   icon: React.ElementType;
   href: string;
   badge?: number;
+  roles?: Array<'ADMIN' | 'MANAGER' | 'MECHANIC'>;
 }
 
-const mainNavItems: NavItem[] = [
-  { title: "Dashboard", icon: LayoutDashboard, href: "/" },
-  { title: "Agenda", icon: Calendar, href: "/agenda" },
-  { title: "Oficina", icon: Wrench, href: "/oficina", badge: 3 },
-  { title: "Clientes", icon: Users, href: "/clientes" },
-  { title: "Veículos", icon: Car, href: "/veiculos" },
-  { title: "Ordens de Serviço", icon: FileText, href: "/ordens" },
-];
-
-const secondaryNavItems: NavItem[] = [
-  { title: "Ponto Digital", icon: Clock, href: "/ponto" },
-  { title: "Relatórios", icon: BarChart3, href: "/relatorios" },
-  { title: "Configurações", icon: Settings, href: "/configuracoes" },
-];
-
 export function AppSidebar() {
-  const location = useLocation();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const { userRole, isAdminOrManager, profile } = useAuth();
+  
+  // Get pending work orders count
+  const { data: workOrders } = useWorkOrders({
+    workflow_step: ['AGUARDANDO_ORCAMENTO', 'EM_QUALIDADE', 'AGUARDANDO_APROVACAO']
+  });
+
+  const pendingCount = workOrders?.length ?? 0;
+
+  const mainNavItems: NavItem[] = [
+    { title: "Dashboard", icon: LayoutDashboard, href: "/" },
+    { title: "Agenda", icon: Calendar, href: "/agenda" },
+    { title: "Oficina", icon: Wrench, href: "/oficina", badge: pendingCount > 0 ? pendingCount : undefined },
+    { title: "Clientes", icon: Users, href: "/clientes", roles: ['ADMIN', 'MANAGER'] },
+    { title: "Veículos", icon: Car, href: "/veiculos" },
+    { title: "Ordens de Serviço", icon: FileText, href: "/ordens" },
+  ];
+
+  const secondaryNavItems: NavItem[] = [
+    { title: "Ponto Digital", icon: Clock, href: "/ponto" },
+    { title: "Relatórios", icon: BarChart3, href: "/relatorios", roles: ['ADMIN', 'MANAGER'] },
+    { title: "Configurações", icon: Settings, href: "/configuracoes", roles: ['ADMIN'] },
+  ];
+
+  const filterByRole = (items: NavItem[]) => {
+    if (!userRole) return items;
+    return items.filter(item => {
+      if (!item.roles) return true;
+      return item.roles.includes(userRole.role);
+    });
+  };
 
   return (
     <aside 
@@ -87,7 +103,7 @@ export function AppSidebar() {
                 Principal
               </p>
             )}
-            {mainNavItems.map((item) => (
+            {filterByRole(mainNavItems).map((item) => (
               <NavLink
                 key={item.href}
                 to={item.href}
@@ -122,7 +138,7 @@ export function AppSidebar() {
                 Sistema
               </p>
             )}
-            {secondaryNavItems.map((item) => (
+            {filterByRole(secondaryNavItems).map((item) => (
               <NavLink
                 key={item.href}
                 to={item.href}
@@ -150,15 +166,16 @@ export function AppSidebar() {
             isCollapsed && "justify-center"
           )}>
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sidebar-accent text-sm font-semibold text-sidebar-accent-foreground">
-              MD
+              {profile?.full_name?.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2) || "?"}
             </div>
             {!isCollapsed && (
               <div className="flex-1 overflow-hidden">
                 <p className="truncate text-sm font-medium text-sidebar-foreground">
-                  MD Mecânica
+                  {profile?.full_name || "Usuário"}
                 </p>
                 <p className="truncate text-xs text-sidebar-foreground/60">
-                  Itapema - SC
+                  {userRole?.role === 'ADMIN' ? 'Administrador' : 
+                   userRole?.role === 'MANAGER' ? 'Gerente' : 'Mecânico'}
                 </p>
               </div>
             )}
