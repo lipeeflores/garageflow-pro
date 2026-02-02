@@ -120,3 +120,85 @@ export function useDeleteWorkOrderItem() {
     },
   });
 }
+
+export function useUpsertItemPricing() {
+  const queryClient = useQueryClient();
+  const { profile } = useAuth();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async ({ 
+      itemId, 
+      workOrderId,
+      unitPrice, 
+      quantity,
+      unitCost,
+    }: { 
+      itemId: string; 
+      workOrderId: string;
+      unitPrice: number; 
+      quantity: number;
+      unitCost?: number;
+    }) => {
+      if (!profile?.tenant_id) throw new Error("Tenant not found");
+
+      const totalPrice = unitPrice * quantity;
+
+      // Check if pricing exists
+      const { data: existing } = await supabase
+        .from('work_order_pricing')
+        .select('id')
+        .eq('work_order_item_id', itemId)
+        .single();
+
+      if (existing) {
+        // Update
+        const { data, error } = await supabase
+          .from('work_order_pricing')
+          .update({
+            unit_price: unitPrice,
+            total_price: totalPrice,
+            unit_cost: unitCost ?? null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', existing.id)
+          .select()
+          .single();
+
+        if (error) throw error;
+        return { data, workOrderId };
+      } else {
+        // Insert
+        const { data, error } = await supabase
+          .from('work_order_pricing')
+          .insert({
+            work_order_item_id: itemId,
+            tenant_id: profile.tenant_id,
+            unit_price: unitPrice,
+            total_price: totalPrice,
+            unit_cost: unitCost ?? null,
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+        return { data, workOrderId };
+      }
+    },
+    onSuccess: ({ workOrderId }) => {
+      queryClient.invalidateQueries({ queryKey: ['work_order_items', workOrderId] });
+      toast({
+        title: "Sucesso",
+        description: "Preço atualizado",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Erro",
+        description: "Erro ao atualizar preço",
+        variant: "destructive",
+      });
+      console.error(error);
+    },
+  });
+}

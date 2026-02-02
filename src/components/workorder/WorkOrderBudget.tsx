@@ -44,6 +44,7 @@ import {
   useDeleteWorkOrderItem,
 } from "@/hooks/useWorkOrderItems";
 import { useAuth } from "@/contexts/AuthContext";
+import { BudgetItemPricing } from "./BudgetItemPricing";
 
 const itemSchema = z.object({
   item_type: z.enum(["SERVICE", "PART"]),
@@ -335,14 +336,17 @@ export function WorkOrderBudget({ workOrderId, canEdit }: WorkOrderBudgetProps) 
                     )}
                     {canEdit && isAdminOrManager && (
                       <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-destructive hover:text-destructive"
-                          onClick={() => handleDelete(item.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          <BudgetItemPricing item={item} workOrderId={workOrderId} />
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive hover:text-destructive"
+                            onClick={() => handleDelete(item.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     )}
                   </TableRow>
