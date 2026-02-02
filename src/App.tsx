@@ -12,6 +12,7 @@ import Oficina from "./pages/Oficina";
 import Clientes from "./pages/Clientes";
 import Veiculos from "./pages/Veiculos";
 import Ordens from "./pages/Ordens";
+import OrdemDetalhe from "./pages/OrdemDetalhe";
 import Ponto from "./pages/Ponto";
 import NotFound from "./pages/NotFound";
 
@@ -71,6 +72,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Ordens />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/ordens/:id"
+              element={
+                <ProtectedRoute>
+                  <OrdemDetalhe />
                 </ProtectedRoute>
               }
             />
