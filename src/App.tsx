@@ -12,6 +12,7 @@ import Oficina from "./pages/Oficina";
 import Clientes from "./pages/Clientes";
 import Veiculos from "./pages/Veiculos";
 import Ordens from "./pages/Ordens";
+import Ponto from "./pages/Ponto";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -70,6 +71,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Ordens />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/ponto"
+              element={
+                <ProtectedRoute>
+                  <Ponto />
                 </ProtectedRoute>
               }
             />

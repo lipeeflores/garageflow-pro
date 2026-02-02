@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { AppLayout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,8 +17,9 @@ import {
   Send,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useWorkOrders, type WorkflowStep } from "@/hooks/useWorkOrders";
+import { useWorkOrders, useUpdateWorkOrder, type WorkflowStep } from "@/hooks/useWorkOrders";
 import { WorkOrderFormDialog } from "@/components/forms";
+import { CheckinDialog } from "@/components/checkin/CheckinDialog";
 
 const priorityColors = {
   BAIXA: "bg-muted text-muted-foreground",
@@ -261,118 +263,167 @@ interface WorkOrderCardProps {
 }
 
 function WorkOrderCard({ order }: WorkOrderCardProps) {
+  const [checkinOpen, setCheckinOpen] = useState(false);
+  const updateWorkOrder = useUpdateWorkOrder();
+
   if (!order) return null;
   
   const priority = order.priority || "MEDIA";
   const progress = getProgressForStep(order.workflow_step);
 
+  const handleStartDiagnosis = () => {
+    updateWorkOrder.mutate({
+      id: order.id,
+      updates: { workflow_step: 'EM_DIAGNOSTICO' },
+    });
+  };
+
+  const handleSendToQuote = () => {
+    updateWorkOrder.mutate({
+      id: order.id,
+      updates: { workflow_step: 'AGUARDANDO_ORCAMENTO' },
+    });
+  };
+
+  const handleComplete = () => {
+    updateWorkOrder.mutate({
+      id: order.id,
+      updates: { workflow_step: 'EM_QUALIDADE' },
+    });
+  };
+
   return (
-    <Card className="overflow-hidden">
-      <CardContent className="p-0">
-        <div className="flex items-stretch">
-          {/* Left: Main Info */}
-          <div className="flex-1 p-5">
-            <div className="flex items-start justify-between">
-              <div className="flex items-center gap-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
-                  <Car className="h-6 w-6 text-primary" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-3">
-                    <span className="font-display text-xl font-bold">
-                      {order.vehicle?.plate || "---"}
-                    </span>
-                    <Badge className={priorityColors[priority]}>
-                      {priority.charAt(0) + priority.slice(1).toLowerCase()}
-                    </Badge>
-                    <Badge className={stepColors[order.workflow_step] || "bg-muted"}>
-                      {stepLabels[order.workflow_step]}
-                    </Badge>
+    <>
+      <Card className="overflow-hidden">
+        <CardContent className="p-0">
+          <div className="flex items-stretch">
+            {/* Left: Main Info */}
+            <div className="flex-1 p-5">
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
+                    <Car className="h-6 w-6 text-primary" />
                   </div>
-                  <div className="mt-1 flex items-center gap-4 text-sm text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      <User className="h-3.5 w-3.5" />
-                      {order.customer?.full_name || "Cliente não definido"}
-                    </span>
-                    <span>
-                      {order.vehicle?.make} {order.vehicle?.model} {order.vehicle?.year}
-                    </span>
-                  </div>
-                </div>
-              </div>
-              <div className="text-right">
-                <p className="text-sm text-muted-foreground">
-                  OS-{order.id.slice(0, 8).toUpperCase()}
-                </p>
-                <p className="font-medium text-accent">
-                  {order.box_location ? boxLabels[order.box_location] : "Pátio"}
-                </p>
-              </div>
-            </div>
-
-            {/* Progress */}
-            <div className="mt-4">
-              <div className="mb-2 flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Progresso</span>
-                <span className="font-medium">{progress}%</span>
-              </div>
-              <Progress value={progress} className="h-2" />
-            </div>
-
-            {/* Mechanic */}
-            <div className="mt-4 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                {order.mechanic?.full_name && (
-                  <>
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
-                      {order.mechanic.full_name
-                        .split(" ")
-                        .map((n) => n[0])
-                        .join("")
-                        .slice(0, 2)}
+                  <div>
+                    <div className="flex items-center gap-3">
+                      <span className="font-display text-xl font-bold">
+                        {order.vehicle?.plate || "---"}
+                      </span>
+                      <Badge className={priorityColors[priority]}>
+                        {priority.charAt(0) + priority.slice(1).toLowerCase()}
+                      </Badge>
+                      <Badge className={stepColors[order.workflow_step] || "bg-muted"}>
+                        {stepLabels[order.workflow_step]}
+                      </Badge>
                     </div>
-                    <span className="font-medium">{order.mechanic.full_name}</span>
-                  </>
-                )}
+                    <div className="mt-1 flex items-center gap-4 text-sm text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        <User className="h-3.5 w-3.5" />
+                        {order.customer?.full_name || "Cliente não definido"}
+                      </span>
+                      <span>
+                        {order.vehicle?.make} {order.vehicle?.model} {order.vehicle?.year}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm text-muted-foreground">
+                    OS-{order.id.slice(0, 8).toUpperCase()}
+                  </p>
+                  <p className="font-medium text-accent">
+                    {order.box_location ? boxLabels[order.box_location] : "Pátio"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Progress */}
+              <div className="mt-4">
+                <div className="mb-2 flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Progresso</span>
+                  <span className="font-medium">{progress}%</span>
+                </div>
+                <Progress value={progress} className="h-2" />
+              </div>
+
+              {/* Mechanic */}
+              <div className="mt-4 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  {order.mechanic?.full_name && (
+                    <>
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
+                        {order.mechanic.full_name
+                          .split(" ")
+                          .map((n) => n[0])
+                          .join("")
+                          .slice(0, 2)}
+                      </div>
+                      <span className="font-medium">{order.mechanic.full_name}</span>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Right: Actions */}
-          <div className="flex w-48 flex-col gap-2 border-l border-border bg-muted/30 p-4">
-            {order.workflow_step === "AGUARDANDO_CHECKIN" && (
-              <Button className="gap-2 bg-success hover:bg-success/90">
-                <Camera className="h-4 w-4" />
-                Check-in
-              </Button>
-            )}
-            {order.workflow_step === "EM_DIAGNOSTICO" && (
-              <>
-                <Button className="gap-2 bg-accent hover:bg-accent/90">
+            {/* Right: Actions */}
+            <div className="flex w-48 flex-col gap-2 border-l border-border bg-muted/30 p-4">
+              {order.workflow_step === "AGUARDANDO_CHECKIN" && (
+                <Button
+                  className="gap-2 bg-success hover:bg-success/90"
+                  onClick={() => setCheckinOpen(true)}
+                >
+                  <Camera className="h-4 w-4" />
+                  Check-in
+                </Button>
+              )}
+              {order.workflow_step === "CHECKIN_CONCLUIDO" && (
+                <Button
+                  className="gap-2 bg-accent hover:bg-accent/90"
+                  onClick={handleStartDiagnosis}
+                >
+                  <Wrench className="h-4 w-4" />
+                  Iniciar Diagnóstico
+                </Button>
+              )}
+              {order.workflow_step === "EM_DIAGNOSTICO" && (
+                <Button
+                  className="gap-2 bg-accent hover:bg-accent/90"
+                  onClick={handleSendToQuote}
+                >
                   <Send className="h-4 w-4" />
                   Enviar p/ Orçamento
                 </Button>
-              </>
-            )}
-            {order.workflow_step === "EM_EXECUCAO" && (
-              <>
-                <Button variant="outline" className="gap-2">
-                  <Camera className="h-4 w-4" />
-                  Adicionar Foto
-                </Button>
-                <Button className="gap-2 bg-success hover:bg-success/90">
-                  <CheckCircle className="h-4 w-4" />
-                  Concluir
-                </Button>
-              </>
-            )}
-            <Button variant="ghost" className="gap-2">
-              <FileText className="h-4 w-4" />
-              Ver Detalhes
-            </Button>
+              )}
+              {order.workflow_step === "EM_EXECUCAO" && (
+                <>
+                  <Button variant="outline" className="gap-2">
+                    <Camera className="h-4 w-4" />
+                    Adicionar Foto
+                  </Button>
+                  <Button
+                    className="gap-2 bg-success hover:bg-success/90"
+                    onClick={handleComplete}
+                  >
+                    <CheckCircle className="h-4 w-4" />
+                    Concluir
+                  </Button>
+                </>
+              )}
+              <Button variant="ghost" className="gap-2">
+                <FileText className="h-4 w-4" />
+                Ver Detalhes
+              </Button>
+            </div>
           </div>
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+
+      <CheckinDialog
+        open={checkinOpen}
+        onOpenChange={setCheckinOpen}
+        workOrderId={order.id}
+        vehiclePlate={order.vehicle?.plate || "---"}
+      />
+    </>
   );
 }
