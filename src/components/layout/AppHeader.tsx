@@ -1,4 +1,4 @@
-import { Bell, Search, User } from "lucide-react";
+import { Bell, Search, LogOut, User, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -10,13 +10,41 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/contexts/AuthContext";
+import { useNotifications, useUnreadCount, useMarkAsRead } from "@/hooks/useNotifications";
+import { formatDistanceToNow } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 interface AppHeaderProps {
   title?: string;
   subtitle?: string;
 }
 
+const roleLabels: Record<string, string> = {
+  ADMIN: "Administrador",
+  MANAGER: "Gerente",
+  MECHANIC: "Mecânico",
+};
+
 export function AppHeader({ title, subtitle }: AppHeaderProps) {
+  const { profile, userRole, signOut } = useAuth();
+  const { data: notifications } = useNotifications();
+  const unreadCount = useUnreadCount();
+  const markAsRead = useMarkAsRead();
+
+  const getInitials = (name: string) => {
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  const handleNotificationClick = (notificationId: string) => {
+    markAsRead.mutate(notificationId);
+  };
+
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       {/* Left: Title */}
@@ -48,9 +76,11 @@ export function AppHeader({ title, subtitle }: AppHeaderProps) {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="relative">
               <Bell className="h-5 w-5" />
-              <Badge className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center p-0 text-[10px]">
-                3
-              </Badge>
+              {unreadCount > 0 && (
+                <Badge className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center p-0 text-[10px]">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </Badge>
+              )}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-80">
@@ -58,30 +88,37 @@ export function AppHeader({ title, subtitle }: AppHeaderProps) {
               Notificações
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="flex flex-col items-start gap-1 py-3">
-              <div className="flex w-full items-center justify-between">
-                <span className="font-medium">Orçamento pendente</span>
-                <Badge variant="secondary" className="text-[10px]">Novo</Badge>
+            {notifications?.length === 0 ? (
+              <div className="py-4 text-center text-sm text-muted-foreground">
+                Nenhuma notificação
               </div>
-              <span className="text-xs text-muted-foreground">
-                ABC-1234 aguardando precificação
-              </span>
-            </DropdownMenuItem>
-            <DropdownMenuItem className="flex flex-col items-start gap-1 py-3">
-              <div className="flex w-full items-center justify-between">
-                <span className="font-medium">QC pendente</span>
-                <Badge variant="secondary" className="text-[10px]">Novo</Badge>
-              </div>
-              <span className="text-xs text-muted-foreground">
-                DEF-5678 pronto para inspeção
-              </span>
-            </DropdownMenuItem>
-            <DropdownMenuItem className="flex flex-col items-start gap-1 py-3">
-              <span className="font-medium">Cliente chegou</span>
-              <span className="text-xs text-muted-foreground">
-                João Silva - 09:30
-              </span>
-            </DropdownMenuItem>
+            ) : (
+              notifications?.slice(0, 5).map((notification) => (
+                <DropdownMenuItem
+                  key={notification.id}
+                  className="flex flex-col items-start gap-1 py-3 cursor-pointer"
+                  onClick={() => handleNotificationClick(notification.id)}
+                >
+                  <div className="flex w-full items-center justify-between">
+                    <span className={`font-medium ${!notification.is_read ? "text-foreground" : "text-muted-foreground"}`}>
+                      {notification.title}
+                    </span>
+                    {!notification.is_read && (
+                      <Badge variant="secondary" className="text-[10px]">Novo</Badge>
+                    )}
+                  </div>
+                  <span className="text-xs text-muted-foreground">
+                    {notification.message}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground/70">
+                    {formatDistanceToNow(new Date(notification.created_at), {
+                      addSuffix: true,
+                      locale: ptBR,
+                    })}
+                  </span>
+                </DropdownMenuItem>
+              ))
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
 
@@ -90,17 +127,34 @@ export function AppHeader({ title, subtitle }: AppHeaderProps) {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon">
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
-                S
+                {profile?.full_name ? getInitials(profile.full_name) : <User className="h-4 w-4" />}
               </div>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuLabel>
+              <div>
+                <p className="font-medium">{profile?.full_name || "Usuário"}</p>
+                <p className="text-xs text-muted-foreground">
+                  {userRole?.role ? roleLabels[userRole.role] : ""}
+                </p>
+              </div>
+            </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Perfil</DropdownMenuItem>
-            <DropdownMenuItem>Configurações</DropdownMenuItem>
+            <DropdownMenuItem>
+              <User className="mr-2 h-4 w-4" />
+              Perfil
+            </DropdownMenuItem>
+            <DropdownMenuItem>
+              <Settings className="mr-2 h-4 w-4" />
+              Configurações
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-destructive">
+            <DropdownMenuItem 
+              className="text-destructive focus:text-destructive"
+              onClick={() => signOut()}
+            >
+              <LogOut className="mr-2 h-4 w-4" />
               Sair
             </DropdownMenuItem>
           </DropdownMenuContent>

@@ -1,7 +1,10 @@
-import { Clock, Phone, Car, Check, X, MoreHorizontal } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useTodayAppointments, type AppointmentStatus } from "@/hooks/useAppointments";
+import { Clock, Car, User, ArrowRight, Loader2, Phone, Check, MoreHorizontal } from "lucide-react";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,141 +12,104 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-interface Appointment {
-  id: string;
-  time: string;
-  customer: string;
-  phone: string;
-  plate: string;
-  vehicle: string;
-  reason: string;
-  status: "agendado" | "chegou" | "nao_compareceu" | "cancelado";
-}
+const statusColors: Record<AppointmentStatus, string> = {
+  AGENDADO: "bg-blue-500",
+  CHEGOU: "bg-green-500",
+  NAO_COMPARECEU: "bg-red-500",
+  REMARCADO: "bg-yellow-500",
+  CANCELADO: "bg-gray-500",
+};
 
-const mockAppointments: Appointment[] = [
-  {
-    id: "1",
-    time: "08:00",
-    customer: "Carlos Eduardo",
-    phone: "(47) 99999-1234",
-    plate: "XYZ-9876",
-    vehicle: "Jeep Compass 2021",
-    reason: "Revisão completa + troca de óleo",
-    status: "chegou",
-  },
-  {
-    id: "2",
-    time: "09:30",
-    customer: "João Silva",
-    phone: "(47) 98888-5678",
-    plate: "ABC-1234",
-    vehicle: "Honda Civic 2020",
-    reason: "Barulho na suspensão dianteira",
-    status: "agendado",
-  },
-  {
-    id: "3",
-    time: "10:00",
-    customer: "Maria Santos",
-    phone: "(47) 97777-9012",
-    plate: "DEF-5678",
-    vehicle: "Toyota Corolla 2019",
-    reason: "Luz do motor acesa",
-    status: "agendado",
-  },
-  {
-    id: "4",
-    time: "11:30",
-    customer: "Paulo Mendes",
-    phone: "(47) 96666-3456",
-    plate: "GHI-9012",
-    vehicle: "VW Polo 2022",
-    reason: "Troca de pastilhas de freio",
-    status: "agendado",
-  },
-  {
-    id: "5",
-    time: "14:00",
-    customer: "Ana Costa",
-    phone: "(47) 95555-7890",
-    plate: "JKL-3456",
-    vehicle: "Fiat Argo 2022",
-    reason: "Alinhamento e balanceamento",
-    status: "agendado",
-  },
-];
-
-const statusConfig = {
-  agendado: {
-    label: "Agendado",
-    className: "bg-info/20 text-info",
-  },
-  chegou: {
-    label: "Chegou",
-    className: "bg-success/20 text-success",
-  },
-  nao_compareceu: {
-    label: "Não compareceu",
-    className: "bg-destructive/20 text-destructive",
-  },
-  cancelado: {
-    label: "Cancelado",
-    className: "bg-muted text-muted-foreground",
-  },
+const statusLabels: Record<AppointmentStatus, string> = {
+  AGENDADO: "Agendado",
+  CHEGOU: "Chegou",
+  NAO_COMPARECEU: "Não Compareceu",
+  REMARCADO: "Remarcado",
+  CANCELADO: "Cancelado",
 };
 
 export function TodaySchedule() {
+  const { data: appointments, isLoading, error } = useTodayAppointments();
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center py-12 text-muted-foreground">
+        Erro ao carregar agendamentos
+      </div>
+    );
+  }
+
+  if (!appointments || appointments.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+        <Car className="h-12 w-12 mb-4 opacity-50" />
+        <p>Nenhum agendamento para hoje</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-3">
-      {mockAppointments.map((appointment) => (
+      {appointments.map((appointment) => (
         <div
           key={appointment.id}
           className={cn(
             "group flex items-start gap-4 rounded-xl border p-4 transition-all duration-200",
-            appointment.status === "chegou"
-              ? "border-success/30 bg-success/5"
-              : "border-border bg-card hover:border-accent/30 hover:shadow-soft"
+            appointment.status === "CHEGOU"
+              ? "border-green-500/30 bg-green-500/5"
+              : "border-border bg-card hover:border-accent/30 hover:shadow-sm"
           )}
         >
           {/* Time */}
           <div className="flex flex-col items-center">
             <span className="font-display text-lg font-bold text-foreground">
-              {appointment.time}
+              {format(new Date(appointment.scheduled_at), "HH:mm")}
             </span>
             <Badge
-              className={cn(
-                "mt-1 text-[10px]",
-                statusConfig[appointment.status].className
-              )}
+              variant="secondary"
+              className="mt-1 gap-1.5 text-[10px] whitespace-nowrap"
             >
-              {statusConfig[appointment.status].label}
+              <span className={cn("h-2 w-2 rounded-full", statusColors[appointment.status])} />
+              {statusLabels[appointment.status]}
             </Badge>
           </div>
 
           {/* Details */}
-          <div className="flex-1 space-y-2">
-            <div className="flex items-center justify-between">
-              <div>
-                <h4 className="font-semibold text-foreground">
-                  {appointment.customer}
+          <div className="flex-1 space-y-2 min-w-0">
+            <div className="flex items-center justify-between gap-4">
+              <div className="min-w-0">
+                <h4 className="font-semibold text-foreground truncate">
+                  {appointment.customer?.full_name || "Cliente não informado"}
                 </h4>
                 <div className="mt-0.5 flex items-center gap-2 text-sm text-muted-foreground">
-                  <Phone className="h-3.5 w-3.5" />
-                  <span>{appointment.phone}</span>
+                  <Phone className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate">{appointment.customer?.phone_number}</span>
                 </div>
               </div>
-              <div className="text-right">
+              <div className="text-right shrink-0">
                 <span className="font-display text-base font-bold text-foreground">
-                  {appointment.plate}
+                  {appointment.vehicle?.plate || "---"}
                 </span>
-                <div className="mt-0.5 flex items-center gap-1 text-sm text-muted-foreground">
+                <div className="mt-0.5 flex items-center gap-1 text-sm text-muted-foreground justify-end">
                   <Car className="h-3.5 w-3.5" />
-                  <span>{appointment.vehicle}</span>
+                  <span>
+                    {appointment.vehicle 
+                      ? `${appointment.vehicle.make} ${appointment.vehicle.model}`
+                      : "Veículo não informado"}
+                  </span>
                 </div>
               </div>
             </div>
 
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground truncate">
               <span className="font-medium text-foreground">Motivo:</span>{" "}
               {appointment.reason}
             </p>
@@ -151,11 +117,11 @@ export function TodaySchedule() {
 
           {/* Actions */}
           <div className="flex items-start gap-2 opacity-0 transition-opacity group-hover:opacity-100">
-            {appointment.status === "agendado" && (
+            {appointment.status === "AGENDADO" && (
               <>
                 <Button
                   size="sm"
-                  className="h-8 gap-1.5 bg-success hover:bg-success/90"
+                  className="h-8 gap-1.5 bg-green-600 hover:bg-green-700"
                 >
                   <Check className="h-3.5 w-3.5" />
                   Check-in
