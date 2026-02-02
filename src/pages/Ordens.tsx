@@ -38,6 +38,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { useWorkOrders, type WorkflowStep } from "@/hooks/useWorkOrders";
 import { WorkOrderFormDialog } from "@/components/forms";
@@ -82,6 +83,7 @@ const priorityColors = {
 export default function Ordens() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const navigate = useNavigate();
   
   const { data: orders, isLoading } = useWorkOrders();
   const { isAdminOrManager } = useAuth();
@@ -261,7 +263,11 @@ export default function Ordens() {
                 </TableHeader>
                 <TableBody>
                   {filteredOrders.map((order) => (
-                    <TableRow key={order.id} className="group cursor-pointer">
+                    <TableRow 
+                      key={order.id} 
+                      className="group cursor-pointer"
+                      onClick={() => navigate(`/ordens/${order.id}`)}
+                    >
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <span className="font-display font-bold">
@@ -328,7 +334,7 @@ export default function Ordens() {
                           )}
                         </TableCell>
                       )}
-                      <TableCell>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button
@@ -340,7 +346,7 @@ export default function Ordens() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => navigate(`/ordens/${order.id}`)}>
                               <ChevronRight className="mr-2 h-4 w-4" />
                               Ver detalhes
                             </DropdownMenuItem>

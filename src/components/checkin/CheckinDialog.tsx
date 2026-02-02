@@ -11,6 +11,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Form,
@@ -61,13 +62,26 @@ const formSchema = z.object({
 type FormData = z.infer<typeof formSchema>;
 
 interface CheckinDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   workOrderId: string;
   vehiclePlate: string;
+  trigger?: React.ReactNode;
 }
 
-export function CheckinDialog({ open, onOpenChange, workOrderId, vehiclePlate }: CheckinDialogProps) {
+export function CheckinDialog({ 
+  open: controlledOpen, 
+  onOpenChange: controlledOnOpenChange, 
+  workOrderId, 
+  vehiclePlate,
+  trigger 
+}: CheckinDialogProps) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  
+  // Support both controlled and uncontrolled modes
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
+  const onOpenChange = isControlled ? controlledOnOpenChange : setInternalOpen;
   const [photos, setPhotos] = useState<Record<string, File | null>>({
     front: null,
     back: null,
@@ -229,6 +243,7 @@ export function CheckinDialog({ open, onOpenChange, workOrderId, vehiclePlate }:
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
+      {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-display flex items-center gap-2">
