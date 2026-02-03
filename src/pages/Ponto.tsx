@@ -5,7 +5,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Camera,
+  CameraOff,
   Clock,
   LogIn,
   LogOut,
@@ -13,14 +22,17 @@ import {
   UtensilsCrossed,
   CheckCircle,
   AlertCircle,
+  AlertTriangle,
+  Upload,
+  ImagePlus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { format, differenceInMinutes, isToday, parseISO } from "date-fns";
+import { format, differenceInMinutes, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Database } from "@/integrations/supabase/types";
 
 type TimeclockEventType = Database["public"]["Enums"]["timeclock_event_type"];
@@ -41,15 +53,71 @@ const eventConfig: Record<TimeclockEventType, { label: string; icon: typeof LogI
 
 const eventSequence: TimeclockEventType[] = ["ENTRADA", "SAIDA_ALMOCO", "RETORNO_ALMOCO", "SAIDA"];
 
+// Compress image before upload
+async function compressImage(file: File | Blob, maxWidth = 1280): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      
+      const canvas = document.createElement("canvas");
+      let width = img.width;
+      let height = img.height;
+      
+      if (width > maxWidth) {
+        height = (height * maxWidth) / width;
+        width = maxWidth;
+      }
+      
+      canvas.width = width;
+      canvas.height = height;
+      
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        reject(new Error("Failed to get canvas context"));
+        return;
+      }
+      
+      ctx.drawImage(img, 0, 0, width, height);
+      
+      canvas.toBlob(
+        (blob) => {
+          if (blob) {
+            resolve(blob);
+          } else {
+            reject(new Error("Failed to compress image"));
+          }
+        },
+        "image/jpeg",
+        0.8
+      );
+    };
+    
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Failed to load image"));
+    };
+    
+    img.src = url;
+  });
+}
+
 export default function Ponto() {
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const [showFallbackDialog, setShowFallbackDialog] = useState(false);
+  const [uploadedPhoto, setUploadedPhoto] = useState<File | null>(null);
+  const [uploadedPhotoPreview, setUploadedPhotoPreview] = useState<string | null>(null);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const { toast } = useToast();
   const { profile, user } = useAuth();
@@ -60,6 +128,15 @@ export default function Ponto() {
     const interval = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(interval);
   }, []);
+
+  // Cleanup uploaded photo preview URL
+  useEffect(() => {
+    return () => {
+      if (uploadedPhotoPreview) {
+        URL.revokeObjectURL(uploadedPhotoPreview);
+      }
+    };
+  }, [uploadedPhotoPreview]);
 
   // Fetch today's events
   const { data: todayEvents, isLoading } = useQuery({
@@ -146,6 +223,15 @@ export default function Ponto() {
 
   // Camera functions
   const startCamera = async () => {
+    setCameraError(null);
+    
+    // Check if mediaDevices is available
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setCameraError("Seu navegador não suporta acesso à câmera");
+      setShowFallbackDialog(true);
+      return;
+    }
+    
     try {
       // First set camera open to render the video element
       setIsCameraOpen(true);
@@ -166,14 +252,29 @@ export default function Ponto() {
         stream.getTracks().forEach(track => track.stop());
         throw new Error("Video element not available");
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Camera error:", error);
       setIsCameraOpen(false);
-      toast({
-        title: "Erro ao acessar câmera",
-        description: "Verifique as permissões do navegador.",
-        variant: "destructive",
-      });
+      
+      const errorMessage = error instanceof Error ? error.message : "Erro desconhecido";
+      const errorName = error instanceof Error ? error.name : "";
+      
+      // Determine specific error message
+      let userMessage = "Não foi possível acessar a câmera.";
+      if (errorName === "NotAllowedError" || errorName === "PermissionDeniedError") {
+        userMessage = "Permissão de câmera negada. Verifique as configurações do navegador.";
+      } else if (errorName === "NotFoundError" || errorName === "DevicesNotFoundError") {
+        userMessage = "Nenhuma câmera encontrada no dispositivo.";
+      } else if (errorName === "NotReadableError" || errorName === "TrackStartError") {
+        userMessage = "Câmera está sendo usada por outro aplicativo.";
+      } else if (errorName === "OverconstrainedError") {
+        userMessage = "Câmera não suporta as configurações solicitadas.";
+      } else if (errorName === "SecurityError") {
+        userMessage = "Acesso à câmera bloqueado por segurança (requer HTTPS).";
+      }
+      
+      setCameraError(userMessage);
+      setShowFallbackDialog(true);
     }
   };
 
@@ -184,6 +285,7 @@ export default function Ponto() {
     }
     setIsCameraOpen(false);
     setCapturedPhoto(null);
+    setCameraError(null);
   };
 
   const capturePhoto = () => {
@@ -207,45 +309,102 @@ export default function Ponto() {
     setCapturedPhoto(null);
   };
 
-  // Submit event
-  const submitEvent = async () => {
-    if (!nextEvent || !capturedPhoto || !user?.id || !profile?.tenant_id) return;
+  // File upload handler
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      toast({
+        title: "Arquivo inválido",
+        description: "Por favor, selecione uma imagem.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Validate file size (max 10MB before compression)
+    if (file.size > 10 * 1024 * 1024) {
+      toast({
+        title: "Arquivo muito grande",
+        description: "O tamanho máximo é 10MB.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setUploadedPhoto(file);
+    setUploadedPhotoPreview(URL.createObjectURL(file));
+  };
+
+  const clearUploadedPhoto = () => {
+    if (uploadedPhotoPreview) {
+      URL.revokeObjectURL(uploadedPhotoPreview);
+    }
+    setUploadedPhoto(null);
+    setUploadedPhotoPreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  // Submit event (with photo from camera or upload)
+  const submitEvent = async (useUploadedPhoto = false) => {
+    if (!nextEvent || !user?.id || !profile?.tenant_id) return;
+    
+    const photoSource = useUploadedPhoto ? uploadedPhoto : capturedPhoto;
     
     setIsSubmitting(true);
     
     try {
-      // Convert base64 to blob
-      const response = await fetch(capturedPhoto);
-      const blob = await response.blob();
+      let attachmentId: string | null = null;
       
-      // Upload photo
-      const fileName = `timeclock/${user.id}/${Date.now()}.jpg`;
-      const { error: uploadError } = await supabase.storage
-        .from('attachments')
-        .upload(fileName, blob);
-      
-      if (uploadError) throw uploadError;
-      
-      const { data: { publicUrl } } = supabase.storage
-        .from('attachments')
-        .getPublicUrl(fileName);
-      
-      // Create attachment record
-      const { data: attachment, error: attachmentError } = await supabase
-        .from('attachments')
-        .insert({
-          tenant_id: profile.tenant_id,
-          parent_type: 'timeclock',
-          parent_id: user.id,
-          attachment_type: 'TIMECLOCK_PHOTO',
-          file_url: publicUrl,
-          file_name: `ponto-${nextEvent.toLowerCase()}.jpg`,
-          uploaded_by: user.id,
-        })
-        .select()
-        .single();
-      
-      if (attachmentError) throw attachmentError;
+      // Only upload photo if we have one
+      if (photoSource) {
+        let blob: Blob;
+        
+        if (useUploadedPhoto && uploadedPhoto) {
+          // Compress uploaded file
+          blob = await compressImage(uploadedPhoto);
+        } else if (capturedPhoto) {
+          // Convert base64 to blob
+          const response = await fetch(capturedPhoto);
+          blob = await response.blob();
+        } else {
+          throw new Error("No photo available");
+        }
+        
+        // Upload photo
+        const fileName = `timeclock/${user.id}/${Date.now()}.jpg`;
+        const { error: uploadError } = await supabase.storage
+          .from('attachments')
+          .upload(fileName, blob);
+        
+        if (uploadError) throw uploadError;
+        
+        const { data: { publicUrl } } = supabase.storage
+          .from('attachments')
+          .getPublicUrl(fileName);
+        
+        // Create attachment record
+        const { data: attachment, error: attachmentError } = await supabase
+          .from('attachments')
+          .insert({
+            tenant_id: profile.tenant_id,
+            parent_type: 'timeclock',
+            parent_id: user.id,
+            attachment_type: 'TIMECLOCK_PHOTO',
+            file_url: publicUrl,
+            file_name: `ponto-${nextEvent.toLowerCase()}.jpg`,
+            uploaded_by: user.id,
+          })
+          .select()
+          .single();
+        
+        if (attachmentError) throw attachmentError;
+        attachmentId = attachment.id;
+      }
       
       // Create timeclock event
       const { error: eventError } = await supabase
@@ -254,7 +413,7 @@ export default function Ponto() {
           tenant_id: profile.tenant_id,
           profile_id: user.id,
           event_type: nextEvent,
-          photo_attachment_id: attachment.id,
+          photo_attachment_id: attachmentId,
         });
       
       if (eventError) throw eventError;
@@ -263,10 +422,51 @@ export default function Ponto() {
       
       toast({
         title: "Ponto registrado!",
-        description: `${eventConfig[nextEvent].label} registrada às ${format(new Date(), "HH:mm")}`,
+        description: `${eventConfig[nextEvent].label} registrada às ${format(new Date(), "HH:mm")}${!photoSource ? " (sem foto)" : ""}`,
       });
       
       stopCamera();
+      clearUploadedPhoto();
+      setShowFallbackDialog(false);
+    } catch (error) {
+      console.error('Timeclock error:', error);
+      toast({
+        title: "Erro ao registrar ponto",
+        description: "Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Submit without photo (fallback)
+  const submitWithoutPhoto = async () => {
+    if (!nextEvent || !user?.id || !profile?.tenant_id) return;
+    
+    setIsSubmitting(true);
+    
+    try {
+      // Create timeclock event without photo
+      const { error: eventError } = await supabase
+        .from('timeclock_events')
+        .insert({
+          tenant_id: profile.tenant_id,
+          profile_id: user.id,
+          event_type: nextEvent,
+          photo_attachment_id: null,
+        });
+      
+      if (eventError) throw eventError;
+      
+      queryClient.invalidateQueries({ queryKey: ['timeclock_events'] });
+      
+      toast({
+        title: "Ponto registrado!",
+        description: `${eventConfig[nextEvent].label} registrada às ${format(new Date(), "HH:mm")} (sem foto)`,
+      });
+      
+      setShowFallbackDialog(false);
     } catch (error) {
       console.error('Timeclock error:', error);
       toast({
@@ -340,14 +540,25 @@ export default function Ponto() {
                   })()}
                   <span className="font-medium">Próximo: {eventConfig[nextEvent].label}</span>
                 </div>
-                <Button
-                  size="lg"
-                  className="w-full max-w-xs"
-                  onClick={startCamera}
-                >
-                  <Camera className="h-5 w-5 mr-2" />
-                  Abrir Câmera
-                </Button>
+                <div className="flex flex-col gap-3 max-w-xs mx-auto">
+                  <Button
+                    size="lg"
+                    className="w-full"
+                    onClick={startCamera}
+                  >
+                    <Camera className="h-5 w-5 mr-2" />
+                    Abrir Câmera
+                  </Button>
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => setShowFallbackDialog(true)}
+                  >
+                    <CameraOff className="h-5 w-5 mr-2" />
+                    Sem Câmera
+                  </Button>
+                </div>
               </div>
             ) : (
               <div className="space-y-4">
@@ -400,7 +611,7 @@ export default function Ponto() {
                       </Button>
                       <Button
                         className="flex-1 bg-success hover:bg-success/90"
-                        onClick={submitEvent}
+                        onClick={() => submitEvent(false)}
                         disabled={isSubmitting}
                       >
                         {isSubmitting ? "Registrando..." : `Confirmar ${eventConfig[nextEvent].label}`}
@@ -421,7 +632,7 @@ export default function Ponto() {
           <CardContent>
             {todayEvents && todayEvents.length > 0 ? (
               <div className="space-y-3">
-                {todayEvents.map((event, index) => {
+                {todayEvents.map((event) => {
                   const config = eventConfig[event.event_type];
                   const Icon = config.icon;
                   
@@ -442,7 +653,15 @@ export default function Ponto() {
                           {format(parseISO(event.event_time), "HH:mm")}
                         </p>
                       </div>
-                      <CheckCircle className="h-5 w-5 text-success" />
+                      <div className="flex items-center gap-2">
+                        {!event.photo_attachment_id && (
+                          <Badge variant="outline" className="text-xs">
+                            <CameraOff className="h-3 w-3 mr-1" />
+                            Sem foto
+                          </Badge>
+                        )}
+                        <CheckCircle className="h-5 w-5 text-success" />
+                      </div>
                     </div>
                   );
                 })}
@@ -457,6 +676,125 @@ export default function Ponto() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Fallback Dialog */}
+      <Dialog open={showFallbackDialog} onOpenChange={setShowFallbackDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-warning" />
+              Registrar Ponto Sem Câmera
+            </DialogTitle>
+            <DialogDescription>
+              {cameraError ? (
+                <span className="text-destructive">{cameraError}</span>
+              ) : (
+                "Você pode fazer upload de uma foto ou registrar sem foto."
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {/* Upload Photo Option */}
+            <div className="space-y-3">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                capture="user"
+                onChange={handleFileUpload}
+                className="hidden"
+              />
+              
+              {uploadedPhotoPreview ? (
+                <div className="space-y-3">
+                  <div className="relative aspect-video bg-black rounded-lg overflow-hidden">
+                    <img
+                      src={uploadedPhotoPreview}
+                      alt="Foto enviada"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      className="flex-1"
+                      onClick={clearUploadedPhoto}
+                      disabled={isSubmitting}
+                    >
+                      Remover Foto
+                    </Button>
+                    <Button
+                      className="flex-1 bg-success hover:bg-success/90"
+                      onClick={() => submitEvent(true)}
+                      disabled={isSubmitting}
+                    >
+                      {isSubmitting ? "Registrando..." : "Confirmar"}
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <Button
+                  variant="outline"
+                  className="w-full h-24 border-dashed"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <div className="flex flex-col items-center gap-2">
+                    <ImagePlus className="h-8 w-8 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">
+                      Selecionar ou tirar foto
+                    </span>
+                  </div>
+                </Button>
+              )}
+            </div>
+
+            {/* Divider */}
+            {!uploadedPhotoPreview && (
+              <>
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-background px-2 text-muted-foreground">
+                      ou
+                    </span>
+                  </div>
+                </div>
+
+                {/* Register without photo */}
+                <div className="text-center">
+                  <Button
+                    variant="secondary"
+                    className="w-full"
+                    onClick={submitWithoutPhoto}
+                    disabled={isSubmitting}
+                  >
+                    <CameraOff className="h-4 w-4 mr-2" />
+                    {isSubmitting ? "Registrando..." : "Registrar Sem Foto"}
+                  </Button>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    O registro sem foto ficará marcado no histórico
+                  </p>
+                </div>
+              </>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setShowFallbackDialog(false);
+                clearUploadedPhoto();
+              }}
+            >
+              Cancelar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }
