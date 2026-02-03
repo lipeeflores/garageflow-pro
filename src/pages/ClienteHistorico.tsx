@@ -26,10 +26,12 @@ import {
   User,
   Edit,
   History,
+  Download,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useCustomerHistory } from "@/hooks/useCustomerHistory";
+import { usePDFExport } from "@/hooks/usePDFExport";
 import { cn } from "@/lib/utils";
 
 const workflowStepLabels: Record<string, string> = {
@@ -66,6 +68,7 @@ export default function ClienteHistorico() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { data, isLoading, error } = useCustomerHistory(id);
+  const { exportCustomerHistoryPDF } = usePDFExport();
 
   if (isLoading) {
     return (
@@ -117,11 +120,22 @@ export default function ClienteHistorico() {
       subtitle="Histórico completo do cliente"
     >
       <div className="space-y-6 animate-fade-in">
-        {/* Back button */}
-        <Button variant="ghost" size="sm" onClick={() => navigate('/clientes')}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Voltar para Clientes
-        </Button>
+        {/* Header with back button and export */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <Button variant="ghost" size="sm" onClick={() => navigate('/clientes')}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Voltar para Clientes
+          </Button>
+          
+          <Button 
+            variant="outline" 
+            className="gap-2"
+            onClick={() => id && exportCustomerHistoryPDF(id)}
+          >
+            <Download className="h-4 w-4" />
+            Exportar Histórico PDF
+          </Button>
+        </div>
 
         {/* Customer Info Card */}
         <Card>

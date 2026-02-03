@@ -1,6 +1,10 @@
+import { useState } from "react";
 import { AppLayout } from "@/components/layout";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   DollarSign,
   TrendingUp,
@@ -10,6 +14,8 @@ import {
   Wallet,
   ArrowUpRight,
   ArrowDownRight,
+  Download,
+  CalendarIcon,
 } from "lucide-react";
 import {
   useFinancialSummary,
@@ -37,8 +43,10 @@ import {
   Pie,
   Cell,
 } from "recharts";
-import { format } from "date-fns";
+import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { usePDFExport } from "@/hooks/usePDFExport";
+import { cn } from "@/lib/utils";
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat("pt-BR", {
@@ -340,6 +348,16 @@ function TopServicesTable() {
 
 export default function Financeiro() {
   const currentMonth = format(new Date(), "MMMM 'de' yyyy", { locale: ptBR });
+  const { exportFinancialPDF } = usePDFExport();
+  
+  const [dateRange, setDateRange] = useState<{ from: Date; to: Date }>({
+    from: startOfMonth(new Date()),
+    to: endOfMonth(new Date()),
+  });
+
+  const handleExportPDF = () => {
+    exportFinancialPDF(dateRange.from, dateRange.to);
+  };
 
   return (
     <AppLayout
@@ -347,6 +365,61 @@ export default function Financeiro() {
       subtitle={`Visão geral de ${currentMonth}`}
     >
       <div className="space-y-6 animate-fade-in">
+        {/* Export Actions */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-2">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="gap-2">
+                  <CalendarIcon className="h-4 w-4" />
+                  {format(dateRange.from, "dd/MM/yyyy")} - {format(dateRange.to, "dd/MM/yyyy")}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="range"
+                  selected={{ from: dateRange.from, to: dateRange.to }}
+                  onSelect={(range) => {
+                    if (range?.from && range?.to) {
+                      setDateRange({ from: range.from, to: range.to });
+                    }
+                  }}
+                  locale={ptBR}
+                  numberOfMonths={2}
+                />
+              </PopoverContent>
+            </Popover>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setDateRange({
+                from: startOfMonth(new Date()),
+                to: endOfMonth(new Date()),
+              })}
+            >
+              Mês Atual
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const lastMonth = subMonths(new Date(), 1);
+                setDateRange({
+                  from: startOfMonth(lastMonth),
+                  to: endOfMonth(lastMonth),
+                });
+              }}
+            >
+              Mês Anterior
+            </Button>
+          </div>
+          
+          <Button onClick={handleExportPDF} className="gap-2 bg-accent hover:bg-accent/90">
+            <Download className="h-4 w-4" />
+            Exportar Relatório PDF
+          </Button>
+        </div>
+
         {/* Summary Cards */}
         <SummaryCards />
 
