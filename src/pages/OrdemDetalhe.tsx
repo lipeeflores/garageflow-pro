@@ -13,7 +13,9 @@ import {
   MapPin,
   AlertTriangle,
   RotateCcw,
-  ExternalLink
+  ExternalLink,
+  Download,
+  FileDown,
 } from "lucide-react";
 import { AppLayout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
@@ -35,6 +37,7 @@ import {
   ReturnWorkOrderDialog,
 } from "@/components/workorder";
 import { CheckinDialog } from "@/components/checkin";
+import { usePDFExport } from "@/hooks/usePDFExport";
 import { cn } from "@/lib/utils";
 
 const stepColors: Record<WorkflowStep, string> = {
@@ -80,6 +83,7 @@ export default function OrdemDetalhe() {
   const { data: workOrder, isLoading } = useWorkOrder(id);
   const { data: returnData } = useWorkOrderReturns(id || "");
   const updateWorkOrder = useUpdateWorkOrder();
+  const { exportWorkOrderPDF, exportBudgetPDF } = usePDFExport();
 
   const canEdit = isAdminOrManager || 
     (workOrder?.current_mechanic_id === user?.id);
@@ -474,6 +478,28 @@ export default function OrdemDetalhe() {
                     />
                   </>
                 )}
+
+                <Separator />
+
+                {/* PDF Export Buttons */}
+                <div className="space-y-2">
+                  <Button 
+                    variant="outline" 
+                    className="w-full gap-2"
+                    onClick={() => exportWorkOrderPDF(workOrder.id)}
+                  >
+                    <Download className="h-4 w-4" />
+                    Exportar OS (PDF)
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    className="w-full gap-2"
+                    onClick={() => exportBudgetPDF(workOrder.id)}
+                  >
+                    <FileDown className="h-4 w-4" />
+                    Exportar Orçamento
+                  </Button>
+                </div>
 
                 <Separator />
 
