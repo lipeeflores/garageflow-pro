@@ -28,6 +28,7 @@ import {
   WorkOrderBudget,
   QualityControlDialog,
   ShareBudgetButton,
+  PaymentDialog,
 } from "@/components/workorder";
 import { CheckinDialog } from "@/components/checkin";
 import { cn } from "@/lib/utils";
@@ -429,13 +430,27 @@ export default function OrdemDetalhe() {
 
                 {/* Finalize */}
                 {workOrder.workflow_step === "PRONTO_PARA_RETIRADA" && isAdminOrManager && (
-                  <Button 
-                    className="w-full gap-2 bg-success hover:bg-success/90"
-                    onClick={() => handleWorkflowAction("FINALIZADO")}
-                    disabled={updateWorkOrder.isPending}
-                  >
-                    Finalizar OS
-                  </Button>
+                  <>
+                    <PaymentDialog
+                      workOrderId={workOrder.id}
+                      totalAmount={workOrder.total_amount ?? 0}
+                    />
+                    <Button 
+                      className="w-full gap-2 bg-success hover:bg-success/90"
+                      onClick={() => handleWorkflowAction("FINALIZADO")}
+                      disabled={updateWorkOrder.isPending}
+                    >
+                      Finalizar OS
+                    </Button>
+                  </>
+                )}
+
+                {/* Payment for Finalized */}
+                {workOrder.workflow_step === "FINALIZADO" && isAdminOrManager && (
+                  <PaymentDialog
+                    workOrderId={workOrder.id}
+                    totalAmount={workOrder.total_amount ?? 0}
+                  />
                 )}
 
                 <Separator />
