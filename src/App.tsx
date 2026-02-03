@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { NotificationPermissionPrompt } from "@/components/notifications";
+import { InstallPrompt } from "@/components/pwa";
 import Dashboard from "./pages/Dashboard";
 import Auth from "./pages/Auth";
 import Agenda from "./pages/Agenda";
@@ -30,6 +31,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <NotificationPermissionPrompt />
+        <InstallPrompt />
         <BrowserRouter>
           <Routes>
             <Route path="/auth" element={<Auth />} />
