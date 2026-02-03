@@ -1,11 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useWorkOrders, type WorkflowStep } from "@/hooks/useWorkOrders";
 import { useTodayAppointments } from "@/hooks/useAppointments";
 import { useMechanicRanking, formatMinutes } from "@/hooks/useMechanicRanking";
+import { useSoundAlerts } from "@/hooks/useSoundAlerts";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 import {
   Car,
@@ -18,9 +22,12 @@ import {
   AlertCircle,
   Wifi,
   Volume2,
+  VolumeX,
+  Bell,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { toast } from "sonner";
 
 interface WorkflowColumn {
   id: WorkflowStep;
@@ -58,7 +65,11 @@ function CurrentTime() {
   );
 }
 
-function OSQueue() {
+interface OSQueueProps {
+  highlightedOS: Set<string>;
+}
+
+function OSQueue({ highlightedOS }: OSQueueProps) {
   const { data: workOrders, isLoading } = useWorkOrders({
     workflow_step: workflowColumns.map(c => c.id),
   });
@@ -113,14 +124,15 @@ function OSQueue() {
                     Vazio
                   </div>
                 ) : (
-                  orders.slice(0, 8).map((order, idx) => (
+                  orders.slice(0, 8).map((order) => (
                     <div
                       key={order.id}
                       className={cn(
                         "p-2.5 rounded-lg bg-background border transition-all",
                         order.priority === "ALTA" 
                           ? "border-destructive/50 animate-pulse-slow" 
-                          : "border-border/50"
+                          : "border-border/50",
+                        highlightedOS.has(order.id) && "ring-2 ring-accent animate-pulse"
                       )}
                     >
                       <div className="flex items-center justify-between">
@@ -129,6 +141,9 @@ function OSQueue() {
                         </span>
                         {order.priority === "ALTA" && (
                           <span className="text-xs">🔴</span>
+                        )}
+                        {highlightedOS.has(order.id) && (
+                          <Bell className="h-3.5 w-3.5 text-accent animate-bounce" />
                         )}
                       </div>
                       <div className="mt-1 text-xs text-muted-foreground truncate">
@@ -278,8 +293,16 @@ function MechanicLeaderboard() {
 }
 
 export default function WorkshopTV() {
+  const { profile } = useAuth();
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [lastUpdate, setLastUpdate] = useState(new Date());
+  const [highlightedOS, setHighlightedOS] = useState<Set<string>>(new Set());
+  const { playSound, testSounds } = useSoundAlerts();
+  const knownOSIds = useRef<Set<string>>(new Set());
+  const isFirstLoad = useRef(true);
 
+  // Online/Offline detection
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
@@ -292,6 +315,120 @@ export default function WorkshopTV() {
       window.removeEventListener('offline', handleOffline);
     };
   }, []);
+
+  // Enable sound on first interaction (browser autoplay policy)
+  const enableSound = useCallback(() => {
+    if (soundEnabled) {
+      playSound("notification");
+      toast.success("Alertas sonoros ativados!");
+    }
+  }, [soundEnabled, playSound]);
+
+  // Highlight an OS temporarily
+  const highlightOS = useCallback((osId: string) => {
+    setHighlightedOS(prev => new Set(prev).add(osId));
+    setTimeout(() => {
+      setHighlightedOS(prev => {
+        const next = new Set(prev);
+        next.delete(osId);
+        return next;
+      });
+    }, 10000); // Remove highlight after 10 seconds
+  }, []);
+
+  // Real-time subscription for work_orders changes
+  useEffect(() => {
+    if (!profile?.tenant_id) return;
+
+    const channel = supabase
+      .channel('tv-work-orders')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'work_orders',
+          filter: `tenant_id=eq.${profile.tenant_id}`,
+        },
+        (payload) => {
+          console.log('New work order:', payload);
+          
+          // Skip sound on first load
+          if (isFirstLoad.current) return;
+          
+          const newOS = payload.new as any;
+          
+          if (soundEnabled) {
+            playSound("new_os");
+          }
+          
+          highlightOS(newOS.id);
+          setLastUpdate(new Date());
+          
+          toast.info("Nova OS recebida!", {
+            description: `Placa: ${newOS.vehicle_id?.slice(0, 8) || "---"}`,
+          });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'work_orders',
+          filter: `tenant_id=eq.${profile.tenant_id}`,
+        },
+        (payload) => {
+          console.log('Work order updated:', payload);
+          
+          // Skip sound on first load
+          if (isFirstLoad.current) return;
+          
+          const oldOS = payload.old as any;
+          const newOS = payload.new as any;
+          
+          // Check for specific transitions
+          if (oldOS.workflow_step !== newOS.workflow_step) {
+            // Budget approved (AGUARDANDO_APROVACAO -> APROVADO)
+            if (oldOS.workflow_step === 'AGUARDANDO_APROVACAO' && newOS.workflow_step === 'APROVADO') {
+              if (soundEnabled) {
+                playSound("approved");
+              }
+              highlightOS(newOS.id);
+              toast.success("Orçamento aprovado!", {
+                description: "Cliente aprovou o serviço",
+              });
+            }
+            
+            // Ready for pickup
+            if (newOS.workflow_step === 'PRONTO_PARA_RETIRADA') {
+              if (soundEnabled) {
+                playSound("ready");
+              }
+              highlightOS(newOS.id);
+              toast.success("Veículo pronto!", {
+                description: "Pronto para retirada",
+              });
+            }
+            
+            setLastUpdate(new Date());
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log('Realtime subscription status:', status);
+        if (status === 'SUBSCRIBED') {
+          // Mark first load as complete after a short delay
+          setTimeout(() => {
+            isFirstLoad.current = false;
+          }, 2000);
+        }
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [profile?.tenant_id, soundEnabled, playSound, highlightOS]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/30 p-6">
@@ -318,7 +455,26 @@ export default function WorkshopTV() {
             )} />
           </div>
         </div>
-        <CurrentTime />
+        <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setSoundEnabled(!soundEnabled);
+              if (!soundEnabled) {
+                enableSound();
+              }
+            }}
+            className={cn(
+              "gap-2",
+              soundEnabled ? "text-accent" : "text-muted-foreground"
+            )}
+          >
+            {soundEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+            {soundEnabled ? "Som Ativo" : "Mudo"}
+          </Button>
+          <CurrentTime />
+        </div>
       </header>
 
       {/* Main Content */}
@@ -333,7 +489,7 @@ export default function WorkshopTV() {
               </CardTitle>
             </CardHeader>
             <CardContent className="h-[calc(100%-60px)]">
-              <OSQueue />
+              <OSQueue highlightedOS={highlightedOS} />
             </CardContent>
           </Card>
         </div>
@@ -371,14 +527,22 @@ export default function WorkshopTV() {
       {/* Footer Status Bar */}
       <footer className="fixed bottom-0 left-0 right-0 h-10 bg-background/80 backdrop-blur border-t border-border/50 flex items-center justify-between px-6">
         <div className="flex items-center gap-4 text-xs text-muted-foreground">
-          <span>Auto-refresh: 30s</span>
+          <span>Realtime: Ativo</span>
           <span>•</span>
-          <span>Última atualização: {format(new Date(), "HH:mm:ss")}</span>
+          <span>Última atualização: {format(lastUpdate, "HH:mm:ss")}</span>
         </div>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <Volume2 className="h-3.5 w-3.5" />
-          <span>Alertas sonoros: Ativo</span>
-        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            testSounds();
+            toast.info("Testando todos os sons...");
+          }}
+          className="text-xs text-muted-foreground hover:text-foreground"
+        >
+          <Volume2 className="h-3.5 w-3.5 mr-1" />
+          Testar Sons
+        </Button>
       </footer>
     </div>
   );
