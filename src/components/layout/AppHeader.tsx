@@ -1,6 +1,6 @@
+import { useState, useEffect } from "react";
 import { Bell, Search, LogOut, User, Settings, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,6 +15,7 @@ import { useNotifications, useUnreadCount, useMarkAsRead } from "@/hooks/useNoti
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { GlobalSearch } from "./GlobalSearch";
 
 interface AppHeaderProps {
   title?: string;
@@ -34,6 +35,20 @@ export function AppHeader({ title, subtitle, onMenuClick }: AppHeaderProps) {
   const unreadCount = useUnreadCount();
   const markAsRead = useMarkAsRead();
   const isMobile = useIsMobile();
+  const [searchOpen, setSearchOpen] = useState(false);
+
+  // Keyboard shortcut: Ctrl+K / Cmd+K
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        setSearchOpen((open) => !open);
+      }
+    };
+
+    document.addEventListener("keydown", down);
+    return () => document.removeEventListener("keydown", down);
+  }, []);
 
   const getInitials = (name: string) => {
     return name
@@ -80,15 +95,20 @@ export function AppHeader({ title, subtitle, onMenuClick }: AppHeaderProps) {
 
       {/* Right: Actions */}
       <div className="flex items-center gap-2 md:gap-3">
-        {/* Search - Hidden on mobile */}
-        <div className="relative hidden lg:block">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            type="search"
-            placeholder="Buscar placa, cliente..."
-            className="w-64 pl-9"
-          />
-        </div>
+        {/* Search Button */}
+        <Button
+          variant="outline"
+          className="relative h-9 w-9 p-0 lg:h-9 lg:w-64 lg:justify-start lg:px-3 lg:py-2"
+          onClick={() => setSearchOpen(true)}
+        >
+          <Search className="h-4 w-4 lg:mr-2" />
+          <span className="hidden lg:inline-flex">Buscar...</span>
+          <kbd className="pointer-events-none absolute right-1.5 top-1.5 hidden h-6 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 lg:flex">
+            <span className="text-xs">⌘</span>K
+          </kbd>
+        </Button>
+
+        <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
 
         {/* Notifications */}
         <DropdownMenu>
