@@ -18,6 +18,7 @@ import OrcamentoPublico from "./pages/OrcamentoPublico";
 import Ponto from "./pages/Ponto";
 import Financeiro from "./pages/Financeiro";
 import WorkshopTV from "./pages/WorkshopTV";
+import ClienteHistorico from "./pages/ClienteHistorico";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -61,6 +62,14 @@ const App = () => (
               element={
                 <ProtectedRoute requiredRoles={['ADMIN', 'MANAGER']}>
                   <Clientes />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/clientes/:id"
+              element={
+                <ProtectedRoute requiredRoles={['ADMIN', 'MANAGER']}>
+                  <ClienteHistorico />
                 </ProtectedRoute>
               }
             />

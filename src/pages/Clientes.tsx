@@ -11,17 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Plus,
   Search,
@@ -30,7 +20,7 @@ import {
   Car,
   FileText,
   MoreHorizontal,
-  ChevronRight,
+  History,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -38,82 +28,39 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useState } from "react";
-
-interface Customer {
-  id: string;
-  name: string;
-  phone: string;
-  email: string;
-  vehicleCount: number;
-  osCount: number;
-  lastVisit: string;
-  totalSpent: string;
-}
-
-const mockCustomers: Customer[] = [
-  {
-    id: "1",
-    name: "João Silva",
-    phone: "(47) 99999-1234",
-    email: "joao@email.com",
-    vehicleCount: 2,
-    osCount: 8,
-    lastVisit: "02/02/2026",
-    totalSpent: "R$ 4.580,00",
-  },
-  {
-    id: "2",
-    name: "Maria Santos",
-    phone: "(47) 98888-5678",
-    email: "maria@email.com",
-    vehicleCount: 1,
-    osCount: 5,
-    lastVisit: "28/01/2026",
-    totalSpent: "R$ 2.350,00",
-  },
-  {
-    id: "3",
-    name: "Pedro Oliveira",
-    phone: "(47) 97777-9012",
-    email: "pedro@email.com",
-    vehicleCount: 3,
-    osCount: 12,
-    lastVisit: "25/01/2026",
-    totalSpent: "R$ 8.920,00",
-  },
-  {
-    id: "4",
-    name: "Ana Costa",
-    phone: "(47) 96666-3456",
-    email: "ana@email.com",
-    vehicleCount: 1,
-    osCount: 3,
-    lastVisit: "20/01/2026",
-    totalSpent: "R$ 1.250,00",
-  },
-  {
-    id: "5",
-    name: "Carlos Eduardo",
-    phone: "(47) 95555-7890",
-    email: "carlos@email.com",
-    vehicleCount: 2,
-    osCount: 15,
-    lastVisit: "18/01/2026",
-    totalSpent: "R$ 12.400,00",
-  },
-];
+import { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+import { useCustomersWithStats } from "@/hooks/useCustomerHistory";
+import { CustomerFormDialog } from "@/components/forms";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 export default function Clientes() {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  
+  const { data: customers, isLoading } = useCustomersWithStats(searchQuery);
 
-  const filteredCustomers = mockCustomers.filter(
-    (customer) =>
-      customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      customer.phone.includes(searchQuery) ||
-      customer.email.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const stats = useMemo(() => {
+    if (!customers) return { total: 0, vehicles: 0, os: 0 };
+    return {
+      total: customers.length,
+      vehicles: customers.reduce((acc, c) => acc + c.vehicle_count, 0),
+      os: customers.reduce((acc, c) => acc + c.os_count, 0),
+    };
+  }, [customers]);
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+    }).format(value);
+  };
+
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return '-';
+    return format(new Date(dateString), "dd/MM/yyyy", { locale: ptBR });
+  };
 
   return (
     <AppLayout title="Clientes" subtitle="Gerenciamento de clientes da oficina">
@@ -130,51 +77,7 @@ export default function Clientes() {
             />
           </div>
 
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="gap-2 bg-accent hover:bg-accent/90">
-                <Plus className="h-4 w-4" />
-                Novo Cliente
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle className="font-display">Novo Cliente</DialogTitle>
-                <DialogDescription>
-                  Cadastre um novo cliente no sistema.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="name">Nome Completo</Label>
-                  <Input id="name" placeholder="Nome do cliente" />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="phone">Telefone</Label>
-                    <Input id="phone" placeholder="(47) 99999-9999" />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input id="email" type="email" placeholder="email@exemplo.com" />
-                  </div>
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="notes">Observações</Label>
-                  <Textarea
-                    id="notes"
-                    placeholder="Observações internas sobre o cliente"
-                  />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-                  Cancelar
-                </Button>
-                <Button className="bg-accent hover:bg-accent/90">Cadastrar</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          <CustomerFormDialog />
         </div>
 
         {/* Stats */}
@@ -186,9 +89,11 @@ export default function Clientes() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Total de Clientes</p>
-                <p className="font-display text-2xl font-bold">
-                  {mockCustomers.length}
-                </p>
+                {isLoading ? (
+                  <Skeleton className="h-8 w-16" />
+                ) : (
+                  <p className="font-display text-2xl font-bold">{stats.total}</p>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -199,9 +104,11 @@ export default function Clientes() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Veículos Cadastrados</p>
-                <p className="font-display text-2xl font-bold">
-                  {mockCustomers.reduce((acc, c) => acc + c.vehicleCount, 0)}
-                </p>
+                {isLoading ? (
+                  <Skeleton className="h-8 w-16" />
+                ) : (
+                  <p className="font-display text-2xl font-bold">{stats.vehicles}</p>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -212,9 +119,11 @@ export default function Clientes() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Total de OS</p>
-                <p className="font-display text-2xl font-bold">
-                  {mockCustomers.reduce((acc, c) => acc + c.osCount, 0)}
-                </p>
+                {isLoading ? (
+                  <Skeleton className="h-8 w-16" />
+                ) : (
+                  <p className="font-display text-2xl font-bold">{stats.os}</p>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -226,88 +135,124 @@ export default function Clientes() {
             <CardTitle className="font-display">Lista de Clientes</CardTitle>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Cliente</TableHead>
-                  <TableHead>Contato</TableHead>
-                  <TableHead className="text-center">Veículos</TableHead>
-                  <TableHead className="text-center">OS</TableHead>
-                  <TableHead>Última Visita</TableHead>
-                  <TableHead className="text-right">Total Gasto</TableHead>
-                  <TableHead className="w-10"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredCustomers.map((customer) => (
-                  <TableRow key={customer.id} className="group cursor-pointer">
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
-                          {customer.name
-                            .split(" ")
-                            .map((n) => n[0])
-                            .join("")
-                            .slice(0, 2)}
-                        </div>
-                        <span className="font-medium">{customer.name}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-1.5 text-sm">
-                          <Phone className="h-3.5 w-3.5 text-muted-foreground" />
-                          {customer.phone}
-                        </div>
-                        <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                          <Mail className="h-3.5 w-3.5" />
-                          {customer.email}
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Badge variant="secondary">{customer.vehicleCount}</Badge>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Badge variant="secondary">{customer.osCount}</Badge>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {customer.lastVisit}
-                    </TableCell>
-                    <TableCell className="text-right font-medium text-success">
-                      {customer.totalSpent}
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="opacity-0 group-hover:opacity-100"
-                          >
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem>
-                            <ChevronRight className="mr-2 h-4 w-4" />
-                            Ver detalhes
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Car className="mr-2 h-4 w-4" />
-                            Ver veículos
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <FileText className="mr-2 h-4 w-4" />
-                            Histórico de OS
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
+            {isLoading ? (
+              <div className="space-y-4">
+                {[...Array(5)].map((_, i) => (
+                  <Skeleton key={i} className="h-16 w-full" />
                 ))}
-              </TableBody>
-            </Table>
+              </div>
+            ) : customers?.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12">
+                <p className="text-muted-foreground">Nenhum cliente encontrado.</p>
+                <CustomerFormDialog 
+                  trigger={
+                    <Button variant="outline" className="mt-4">
+                      <Plus className="mr-2 h-4 w-4" />
+                      Cadastrar primeiro cliente
+                    </Button>
+                  }
+                />
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Cliente</TableHead>
+                    <TableHead>Contato</TableHead>
+                    <TableHead className="text-center">Veículos</TableHead>
+                    <TableHead className="text-center">OS</TableHead>
+                    <TableHead>Última Visita</TableHead>
+                    <TableHead className="text-right">Total Gasto</TableHead>
+                    <TableHead className="w-10"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {customers?.map((customer) => (
+                    <TableRow 
+                      key={customer.id} 
+                      className="group cursor-pointer"
+                      onClick={() => navigate(`/clientes/${customer.id}`)}
+                    >
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
+                            {customer.full_name
+                              .split(" ")
+                              .map((n) => n[0])
+                              .join("")
+                              .slice(0, 2)
+                              .toUpperCase()}
+                          </div>
+                          <span className="font-medium">{customer.full_name}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-1.5 text-sm">
+                            <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+                            {customer.phone_number}
+                          </div>
+                          {customer.email && (
+                            <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                              <Mail className="h-3.5 w-3.5" />
+                              {customer.email}
+                            </div>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Badge variant="secondary">{customer.vehicle_count}</Badge>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Badge variant="secondary">{customer.os_count}</Badge>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {formatDate(customer.last_visit)}
+                      </TableCell>
+                      <TableCell className="text-right font-medium text-success">
+                        {formatCurrency(customer.total_spent)}
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="opacity-0 group-hover:opacity-100"
+                            >
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/clientes/${customer.id}`);
+                            }}>
+                              <History className="mr-2 h-4 w-4" />
+                              Ver histórico
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/veiculos?customer=${customer.id}`);
+                            }}>
+                              <Car className="mr-2 h-4 w-4" />
+                              Ver veículos
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/ordens?customer=${customer.id}`);
+                            }}>
+                              <FileText className="mr-2 h-4 w-4" />
+                              Histórico de OS
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
           </CardContent>
         </Card>
       </div>
