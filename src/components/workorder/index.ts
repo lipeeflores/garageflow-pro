@@ -6,3 +6,4 @@ export { AudioRecorder } from './AudioRecorder';
 export { QualityControlDialog } from './QualityControlDialog';
 export { ShareBudgetButton } from './ShareBudgetButton';
 export { PaymentDialog } from './PaymentDialog';
+export { ReturnWorkOrderDialog } from './ReturnWorkOrderDialog';
