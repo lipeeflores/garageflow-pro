@@ -3,3 +3,5 @@ export { WorkOrderDiagnosis } from './WorkOrderDiagnosis';
 export { WorkOrderBudget } from './WorkOrderBudget';
 export { BudgetItemPricing } from './BudgetItemPricing';
 export { AudioRecorder } from './AudioRecorder';
+export { QualityControlDialog } from './QualityControlDialog';
+export { ShareBudgetButton } from './ShareBudgetButton';

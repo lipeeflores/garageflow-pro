@@ -25,7 +25,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { 
   WorkOrderTimeline, 
   WorkOrderDiagnosis, 
-  WorkOrderBudget 
+  WorkOrderBudget,
+  QualityControlDialog,
+  ShareBudgetButton,
 } from "@/components/workorder";
 import { CheckinDialog } from "@/components/checkin";
 import { cn } from "@/lib/utils";
@@ -351,9 +353,16 @@ export default function OrdemDetalhe() {
                   </Button>
                 )}
 
-                {/* Approve Quote */}
+                {/* Awaiting Approval - Share with customer */}
                 {workOrder.workflow_step === "AGUARDANDO_APROVACAO" && isAdminOrManager && (
                   <>
+                    <ShareBudgetButton
+                      workOrderId={workOrder.id}
+                      customerPhone={workOrder.customer?.phone_number}
+                      customerName={workOrder.customer?.full_name}
+                      vehiclePlate={workOrder.vehicle?.plate}
+                      totalAmount={workOrder.total_amount ?? undefined}
+                    />
                     <Button 
                       className="w-full gap-2 bg-success hover:bg-success/90"
                       onClick={() => handleWorkflowAction("APROVADO")}
@@ -395,25 +404,16 @@ export default function OrdemDetalhe() {
                   </Button>
                 )}
 
-                {/* Quality Actions */}
+                {/* Quality Actions - Use QC Dialog */}
                 {workOrder.workflow_step === "EM_QUALIDADE" && isAdminOrManager && (
-                  <>
-                    <Button 
-                      className="w-full gap-2 bg-success hover:bg-success/90"
-                      onClick={() => handleWorkflowAction("PRONTO_PARA_RETIRADA")}
-                      disabled={updateWorkOrder.isPending}
-                    >
-                      Aprovar Qualidade
-                    </Button>
-                    <Button 
-                      className="w-full gap-2"
-                      variant="outline"
-                      onClick={() => handleWorkflowAction("AJUSTES")}
-                      disabled={updateWorkOrder.isPending}
-                    >
-                      Devolver p/ Ajustes
-                    </Button>
-                  </>
+                  <QualityControlDialog
+                    workOrderId={workOrder.id}
+                    trigger={
+                      <Button className="w-full gap-2">
+                        Controle de Qualidade
+                      </Button>
+                    }
+                  />
                 )}
 
                 {/* From Adjustments */}

@@ -13,6 +13,7 @@ import Clientes from "./pages/Clientes";
 import Veiculos from "./pages/Veiculos";
 import Ordens from "./pages/Ordens";
 import OrdemDetalhe from "./pages/OrdemDetalhe";
+import OrcamentoPublico from "./pages/OrcamentoPublico";
 import Ponto from "./pages/Ponto";
 import NotFound from "./pages/NotFound";
 
@@ -91,6 +92,8 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            {/* Public route - no auth required */}
+            <Route path="/orcamento/:id" element={<OrcamentoPublico />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
