@@ -16,6 +16,7 @@ import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { GlobalSearch } from "./GlobalSearch";
+import { ThemeToggle } from "@/components/pwa";
 
 interface AppHeaderProps {
   title?: string;
@@ -109,6 +110,9 @@ export function AppHeader({ title, subtitle, onMenuClick }: AppHeaderProps) {
         </Button>
 
         <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
+
+        {/* Theme Toggle */}
+        <ThemeToggle />
 
         {/* Notifications */}
         <DropdownMenu>
