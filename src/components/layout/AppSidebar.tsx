@@ -5,7 +5,7 @@ import {
   Users, 
   Car, 
   FileText, 
-  BarChart3, 
+  DollarSign, 
   Settings,
   Clock,
   ChevronLeft,
@@ -48,7 +48,7 @@ export function AppSidebar() {
 
   const secondaryNavItems: NavItem[] = [
     { title: "Ponto Digital", icon: Clock, href: "/ponto" },
-    { title: "Relatórios", icon: BarChart3, href: "/relatorios", roles: ['ADMIN', 'MANAGER'] },
+    { title: "Financeiro", icon: DollarSign, href: "/financeiro", roles: ['ADMIN', 'MANAGER'] },
     { title: "Configurações", icon: Settings, href: "/configuracoes", roles: ['ADMIN'] },
   ];
 
