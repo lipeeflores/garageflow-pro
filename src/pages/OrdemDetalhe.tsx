@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { 
@@ -11,7 +11,9 @@ import {
   FileText,
   Wrench,
   MapPin,
-  AlertTriangle
+  AlertTriangle,
+  RotateCcw,
+  ExternalLink
 } from "lucide-react";
 import { AppLayout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
@@ -21,6 +23,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { useWorkOrder, useUpdateWorkOrder, type WorkflowStep } from "@/hooks/useWorkOrders";
+import { useWorkOrderReturns } from "@/hooks/useWorkOrderReturns";
 import { useAuth } from "@/contexts/AuthContext";
 import { 
   WorkOrderTimeline, 
@@ -29,6 +32,7 @@ import {
   QualityControlDialog,
   ShareBudgetButton,
   PaymentDialog,
+  ReturnWorkOrderDialog,
 } from "@/components/workorder";
 import { CheckinDialog } from "@/components/checkin";
 import { cn } from "@/lib/utils";
@@ -74,6 +78,7 @@ export default function OrdemDetalhe() {
   const navigate = useNavigate();
   const { isAdminOrManager, user } = useAuth();
   const { data: workOrder, isLoading } = useWorkOrder(id);
+  const { data: returnData } = useWorkOrderReturns(id || "");
   const updateWorkOrder = useUpdateWorkOrder();
 
   const canEdit = isAdminOrManager || 
@@ -453,6 +458,23 @@ export default function OrdemDetalhe() {
                   />
                 )}
 
+                {/* Return/Warranty - Show for finalized orders */}
+                {workOrder.workflow_step === "FINALIZADO" && 
+                 workOrder.order_type !== "RETORNO" && 
+                 isAdminOrManager && (
+                  <>
+                    <Separator />
+                    <ReturnWorkOrderDialog
+                      workOrderId={workOrder.id}
+                      vehicleId={workOrder.vehicle_id}
+                      customerId={workOrder.customer_id}
+                      vehiclePlate={workOrder.vehicle?.plate || ""}
+                      originalMechanicId={workOrder.current_mechanic_id || undefined}
+                      originalMechanicName={workOrder.mechanic?.full_name}
+                    />
+                  </>
+                )}
+
                 <Separator />
 
                 {/* Assigned Mechanic */}
@@ -477,6 +499,62 @@ export default function OrdemDetalhe() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Return History Card */}
+            {(returnData?.asOriginal?.length || returnData?.asReturn) && (
+              <Card className="border-destructive/30">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2 text-destructive">
+                    <RotateCcw className="h-4 w-4" />
+                    Retornos de Garantia
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {/* This order is a RETURN - show link to original */}
+                  {returnData?.asReturn && (
+                    <div className="rounded-lg bg-destructive/10 p-3 space-y-2">
+                      <p className="text-xs font-medium text-destructive">Esta OS é um retorno de:</p>
+                      <Link 
+                        to={`/ordens/${returnData.asReturn.original_work_order_id}`}
+                        className="flex items-center gap-2 text-sm font-medium hover:underline"
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                        OS-{returnData.asReturn.original_work_order_id.slice(0, 8).toUpperCase()}
+                      </Link>
+                      <p className="text-xs text-muted-foreground">
+                        <strong>Motivo:</strong> {returnData.asReturn.reason}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* This order has spawned returns - show list */}
+                  {returnData?.asOriginal?.map((ret) => (
+                    <div key={ret.id} className="rounded-lg border border-destructive/20 p-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Link 
+                          to={`/ordens/${ret.return_work_order_id}`}
+                          className="flex items-center gap-2 text-sm font-medium hover:underline"
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                          OS-{ret.return_work_order_id.slice(0, 8).toUpperCase()}
+                        </Link>
+                        <Badge variant="outline" className="text-xs">
+                          {ret.return_date && format(new Date(ret.return_date), "dd/MM/yy")}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        <strong>Motivo:</strong> {ret.reason}
+                      </p>
+                      {ret.mechanic_blamed && (
+                        <p className="text-xs text-destructive">
+                          <strong>Responsável:</strong> {ret.mechanic_blamed.full_name} (-10 pts)
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
       </div>
