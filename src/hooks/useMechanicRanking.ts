@@ -1,7 +1,8 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { format, startOfMonth, endOfMonth } from "date-fns";
+import { toast } from "@/hooks/use-toast";
 
 export interface MechanicRankingData {
   id: string;
@@ -232,6 +233,41 @@ export function useMechanicRanking(month?: Date) {
     },
     enabled: !!profile?.tenant_id,
     refetchInterval: 60000, // Refresh every minute
+  });
+}
+
+// Hook to trigger ranking recalculation via edge function
+export function useRecalculateRanking() {
+  const queryClient = useQueryClient();
+  const { profile } = useAuth();
+
+  return useMutation({
+    mutationFn: async (month?: Date) => {
+      const targetMonth = month || new Date();
+      const monthStr = format(targetMonth, 'yyyy-MM-dd');
+
+      const { data, error } = await supabase.functions.invoke('calculate-monthly-ranking', {
+        body: { month: monthStr },
+      });
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['mechanic_ranking'] });
+      toast({
+        title: "Ranking atualizado",
+        description: `${data.mechanics_processed} mecânicos processados para ${data.month}`,
+      });
+    },
+    onError: (error: Error) => {
+      console.error("Error recalculating ranking:", error);
+      toast({
+        title: "Erro ao recalcular ranking",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
   });
 }
 
