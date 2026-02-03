@@ -15,6 +15,7 @@ import Ordens from "./pages/Ordens";
 import OrdemDetalhe from "./pages/OrdemDetalhe";
 import OrcamentoPublico from "./pages/OrcamentoPublico";
 import Ponto from "./pages/Ponto";
+import WorkshopTV from "./pages/WorkshopTV";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -92,8 +93,9 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
-            {/* Public route - no auth required */}
+            {/* Public routes - no auth required */}
             <Route path="/orcamento/:id" element={<OrcamentoPublico />} />
+            <Route path="/tv" element={<WorkshopTV />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
