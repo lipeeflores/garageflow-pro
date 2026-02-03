@@ -1,4 +1,4 @@
-import { Bell, Search, LogOut, User, Settings } from "lucide-react";
+import { Bell, Search, LogOut, User, Settings, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -14,10 +14,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useNotifications, useUnreadCount, useMarkAsRead } from "@/hooks/useNotifications";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface AppHeaderProps {
   title?: string;
   subtitle?: string;
+  onMenuClick?: () => void;
 }
 
 const roleLabels: Record<string, string> = {
@@ -26,11 +28,12 @@ const roleLabels: Record<string, string> = {
   MECHANIC: "Mecânico",
 };
 
-export function AppHeader({ title, subtitle }: AppHeaderProps) {
+export function AppHeader({ title, subtitle, onMenuClick }: AppHeaderProps) {
   const { profile, userRole, signOut } = useAuth();
   const { data: notifications } = useNotifications();
   const unreadCount = useUnreadCount();
   const markAsRead = useMarkAsRead();
+  const isMobile = useIsMobile();
 
   const getInitials = (name: string) => {
     return name
@@ -46,23 +49,39 @@ export function AppHeader({ title, subtitle }: AppHeaderProps) {
   };
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      {/* Left: Title */}
-      <div>
-        {title && (
-          <h1 className="font-display text-xl font-bold text-foreground">
-            {title}
-          </h1>
+    <header className="sticky top-0 z-30 flex h-14 md:h-16 items-center justify-between border-b border-border bg-background/95 px-4 md:px-6 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      {/* Left: Menu + Title */}
+      <div className="flex items-center gap-3">
+        {/* Mobile Menu Button */}
+        {isMobile && onMenuClick && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-9 w-9 lg:hidden"
+            onClick={onMenuClick}
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
         )}
-        {subtitle && (
-          <p className="text-sm text-muted-foreground">{subtitle}</p>
-        )}
+        
+        <div className="min-w-0">
+          {title && (
+            <h1 className="font-display text-lg md:text-xl font-bold text-foreground truncate">
+              {title}
+            </h1>
+          )}
+          {subtitle && (
+            <p className="text-xs md:text-sm text-muted-foreground truncate hidden sm:block">
+              {subtitle}
+            </p>
+          )}
+        </div>
       </div>
 
       {/* Right: Actions */}
-      <div className="flex items-center gap-3">
-        {/* Search */}
-        <div className="relative hidden md:block">
+      <div className="flex items-center gap-2 md:gap-3">
+        {/* Search - Hidden on mobile */}
+        <div className="relative hidden lg:block">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             type="search"
@@ -74,7 +93,7 @@ export function AppHeader({ title, subtitle }: AppHeaderProps) {
         {/* Notifications */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="relative">
+            <Button variant="ghost" size="icon" className="relative h-9 w-9">
               <Bell className="h-5 w-5" />
               {unreadCount > 0 && (
                 <Badge className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center p-0 text-[10px]">
@@ -83,7 +102,7 @@ export function AppHeader({ title, subtitle }: AppHeaderProps) {
               )}
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-80">
+          <DropdownMenuContent align="end" className="w-72 md:w-80">
             <DropdownMenuLabel className="font-display">
               Notificações
             </DropdownMenuLabel>
@@ -107,7 +126,7 @@ export function AppHeader({ title, subtitle }: AppHeaderProps) {
                       <Badge variant="secondary" className="text-[10px]">Novo</Badge>
                     )}
                   </div>
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-xs text-muted-foreground line-clamp-2">
                     {notification.message}
                   </span>
                   <span className="text-[10px] text-muted-foreground/70">
@@ -125,7 +144,7 @@ export function AppHeader({ title, subtitle }: AppHeaderProps) {
         {/* User Menu */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon">
+            <Button variant="ghost" size="icon" className="h-9 w-9">
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
                 {profile?.full_name ? getInitials(profile.full_name) : <User className="h-4 w-4" />}
               </div>

@@ -50,80 +50,91 @@ export default function Dashboard() {
         year: "numeric",
       })}`}
     >
-      <div className="space-y-6 animate-fade-in">
+      <div className="space-y-4 md:space-y-6 animate-fade-in">
         {/* Quick Actions */}
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap gap-2 sm:gap-3">
           {isAdminOrManager && (
             <WorkOrderFormDialog
               trigger={
-                <Button className="gap-2 bg-accent hover:bg-accent/90 shadow-glow">
+                <Button className="gap-2 bg-accent hover:bg-accent/90 shadow-glow text-sm">
                   <Plus className="h-4 w-4" />
-                  Nova OS
+                  <span className="hidden xs:inline">Nova OS</span>
+                  <span className="xs:hidden">OS</span>
                 </Button>
               }
             />
           )}
-          <Button variant="outline" className="gap-2" asChild>
+          <Button variant="outline" className="gap-2 text-sm" asChild>
             <a href="/agenda">
               <Calendar className="h-4 w-4" />
-              Agendar
+              <span className="hidden sm:inline">Agendar</span>
             </a>
           </Button>
-          <Button variant="outline" className="gap-2" asChild>
+          <Button variant="outline" className="gap-2 text-sm" asChild>
             <a href="/oficina">
               <Car className="h-4 w-4" />
-              Check-in Direto
+              <span className="hidden sm:inline">Check-in</span>
             </a>
           </Button>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatsCard
-            title="OS em Andamento"
-            value={activeOrders}
-            subtitle={`${pendingBudget} aguardando orçamento`}
-            icon={FileText}
-            variant="accent"
-          />
-          <StatsCard
-            title="Veículos Hoje"
-            value={todayVehicles}
-            subtitle={`${arrivedVehicles} já chegaram`}
-            icon={Car}
-          />
-          <StatsCard
-            title="Tempo Médio"
-            value="--"
-            subtitle="Por ordem de serviço"
-            icon={Clock}
-            variant="warning"
-          />
-          {isAdminOrManager && (
+        {/* Stats Grid - scrollable on mobile */}
+        <div className="flex gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:gap-4 sm:overflow-visible sm:pb-0">
+          <div className="min-w-[160px] shrink-0 sm:min-w-0">
             <StatsCard
-              title="Faturamento Hoje"
-              value="R$ --"
-              subtitle="Dados em breve"
-              icon={DollarSign}
-              variant="success"
+              title="OS em Andamento"
+              value={activeOrders}
+              subtitle={`${pendingBudget} aguardando orçamento`}
+              icon={FileText}
+              variant="accent"
             />
+          </div>
+          <div className="min-w-[160px] shrink-0 sm:min-w-0">
+            <StatsCard
+              title="Veículos Hoje"
+              value={todayVehicles}
+              subtitle={`${arrivedVehicles} já chegaram`}
+              icon={Car}
+            />
+          </div>
+          <div className="min-w-[160px] shrink-0 sm:min-w-0">
+            <StatsCard
+              title="Tempo Médio"
+              value="--"
+              subtitle="Por ordem de serviço"
+              icon={Clock}
+              variant="warning"
+            />
+          </div>
+          {isAdminOrManager && (
+            <div className="min-w-[160px] shrink-0 sm:min-w-0">
+              <StatsCard
+                title="Faturamento Hoje"
+                value="R$ --"
+                subtitle="Dados em breve"
+                icon={DollarSign}
+                variant="success"
+              />
+            </div>
           )}
         </div>
 
         {/* Main Content Tabs */}
         <Tabs defaultValue="workflow" className="space-y-4">
-          <TabsList className="bg-muted/50">
-            <TabsTrigger value="workflow" className="gap-2">
-              <TrendingUp className="h-4 w-4" />
-              Fluxo de Trabalho
+          <TabsList className="bg-muted/50 w-full grid grid-cols-3 h-auto">
+            <TabsTrigger value="workflow" className="gap-1 sm:gap-2 py-2 px-2 sm:px-3 text-xs sm:text-sm">
+              <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Fluxo de Trabalho</span>
+              <span className="sm:hidden">Fluxo</span>
             </TabsTrigger>
-            <TabsTrigger value="schedule" className="gap-2">
-              <Calendar className="h-4 w-4" />
-              Agenda do Dia
+            <TabsTrigger value="schedule" className="gap-1 sm:gap-2 py-2 px-2 sm:px-3 text-xs sm:text-sm">
+              <Calendar className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Agenda do Dia</span>
+              <span className="sm:hidden">Agenda</span>
             </TabsTrigger>
-            <TabsTrigger value="ranking" className="gap-2">
-              <Clock className="h-4 w-4" />
-              Ranking
+            <TabsTrigger value="ranking" className="gap-1 sm:gap-2 py-2 px-2 sm:px-3 text-xs sm:text-sm">
+              <Clock className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span>Ranking</span>
             </TabsTrigger>
           </TabsList>
 
