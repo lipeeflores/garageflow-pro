@@ -147,6 +147,12 @@ export default function Ponto() {
   // Camera functions
   const startCamera = async () => {
     try {
+      // First set camera open to render the video element
+      setIsCameraOpen(true);
+      
+      // Small delay to ensure video element is mounted
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: "user", width: 640, height: 480 }
       });
@@ -154,9 +160,15 @@ export default function Ponto() {
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         streamRef.current = stream;
-        setIsCameraOpen(true);
+        await videoRef.current.play();
+      } else {
+        // If video ref not available, stop the stream
+        stream.getTracks().forEach(track => track.stop());
+        throw new Error("Video element not available");
       }
     } catch (error) {
+      console.error("Camera error:", error);
+      setIsCameraOpen(false);
       toast({
         title: "Erro ao acessar câmera",
         description: "Verifique as permissões do navegador.",
