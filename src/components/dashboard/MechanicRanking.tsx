@@ -1,8 +1,10 @@
 import { cn } from "@/lib/utils";
-import { Trophy, TrendingUp, Clock, Wrench, Users } from "lucide-react";
+import { Trophy, TrendingUp, Clock, Wrench, Users, RefreshCw } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
-import { useMechanicRanking, formatMinutes } from "@/hooks/useMechanicRanking";
+import { Button } from "@/components/ui/button";
+import { useMechanicRanking, formatMinutes, useRecalculateRanking } from "@/hooks/useMechanicRanking";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useAuth } from "@/contexts/AuthContext";
 
 const positionStyles = {
   1: "bg-gradient-to-br from-yellow-400 to-amber-500 text-white shadow-glow",
@@ -13,6 +15,9 @@ const positionStyles = {
 
 export function MechanicRanking() {
   const { data: mechanics, isLoading } = useMechanicRanking();
+  const recalculateRanking = useRecalculateRanking();
+  const { userRole } = useAuth();
+  const canRecalculate = userRole?.role === 'ADMIN' || userRole?.role === 'MANAGER';
 
   if (isLoading) {
     return (
@@ -40,6 +45,19 @@ export function MechanicRanking() {
 
   return (
     <div className="space-y-4">
+      {canRecalculate && (
+        <div className="flex justify-end">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => recalculateRanking.mutate(new Date())}
+            disabled={recalculateRanking.isPending}
+          >
+            <RefreshCw className={cn("h-4 w-4 mr-2", recalculateRanking.isPending && "animate-spin")} />
+            {recalculateRanking.isPending ? "Calculando..." : "Recalcular Ranking"}
+          </Button>
+        </div>
+      )}
       {mechanics.map((mechanic) => (
         <div
           key={mechanic.id}
