@@ -15,6 +15,7 @@ import Ordens from "./pages/Ordens";
 import OrdemDetalhe from "./pages/OrdemDetalhe";
 import OrcamentoPublico from "./pages/OrcamentoPublico";
 import Ponto from "./pages/Ponto";
+import Financeiro from "./pages/Financeiro";
 import WorkshopTV from "./pages/WorkshopTV";
 import NotFound from "./pages/NotFound";
 
@@ -90,6 +91,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Ponto />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/financeiro"
+              element={
+                <ProtectedRoute requiredRoles={['ADMIN', 'MANAGER']}>
+                  <Financeiro />
                 </ProtectedRoute>
               }
             />
