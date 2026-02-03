@@ -1,72 +1,46 @@
 import { cn } from "@/lib/utils";
-import { Trophy, TrendingUp, Clock, Wrench } from "lucide-react";
+import { Trophy, TrendingUp, Clock, Wrench, Users } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
-
-interface Mechanic {
-  id: string;
-  name: string;
-  initials: string;
-  score: number;
-  osCompleted: number;
-  avgTime: string;
-  trend: number;
-  position: number;
-}
-
-const mockMechanics: Mechanic[] = [
-  {
-    id: "1",
-    name: "Carlos Silva",
-    initials: "CS",
-    score: 95,
-    osCompleted: 24,
-    avgTime: "2h 15min",
-    trend: 5,
-    position: 1,
-  },
-  {
-    id: "2",
-    name: "Roberto Santos",
-    initials: "RS",
-    score: 88,
-    osCompleted: 21,
-    avgTime: "2h 45min",
-    trend: 2,
-    position: 2,
-  },
-  {
-    id: "3",
-    name: "André Lima",
-    initials: "AL",
-    score: 82,
-    osCompleted: 19,
-    avgTime: "3h 00min",
-    trend: -1,
-    position: 3,
-  },
-  {
-    id: "4",
-    name: "Paulo Oliveira",
-    initials: "PO",
-    score: 75,
-    osCompleted: 16,
-    avgTime: "3h 30min",
-    trend: 0,
-    position: 4,
-  },
-];
+import { useMechanicRanking, formatMinutes } from "@/hooks/useMechanicRanking";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const positionStyles = {
   1: "bg-gradient-to-br from-yellow-400 to-amber-500 text-white shadow-glow",
   2: "bg-gradient-to-br from-slate-300 to-slate-400 text-slate-800",
   3: "bg-gradient-to-br from-amber-600 to-amber-700 text-white",
-  4: "bg-muted text-muted-foreground",
+  default: "bg-muted text-muted-foreground",
 };
 
 export function MechanicRanking() {
+  const { data: mechanics, isLoading } = useMechanicRanking();
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        {[1, 2, 3].map((i) => (
+          <Skeleton key={i} className="h-20 w-full rounded-xl" />
+        ))}
+      </div>
+    );
+  }
+
+  if (!mechanics || mechanics.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 text-center">
+        <Users className="h-12 w-12 text-muted-foreground/50 mb-4" />
+        <h3 className="font-semibold text-foreground">Nenhum mecânico encontrado</h3>
+        <p className="text-sm text-muted-foreground mt-1">
+          O ranking será exibido quando houver mecânicos e OS concluídas
+        </p>
+      </div>
+    );
+  }
+
+  const maxScore = Math.max(...mechanics.map(m => m.score), 1);
+
   return (
     <div className="space-y-4">
-      {mockMechanics.map((mechanic) => (
+      {mechanics.map((mechanic) => (
         <div
           key={mechanic.id}
           className={cn(
@@ -80,8 +54,10 @@ export function MechanicRanking() {
           <div
             className={cn(
               "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg font-display text-lg font-bold",
-              positionStyles[mechanic.position as keyof typeof positionStyles] ||
-                positionStyles[4]
+              mechanic.position === 1 ? positionStyles[1] :
+              mechanic.position === 2 ? positionStyles[2] :
+              mechanic.position === 3 ? positionStyles[3] :
+              positionStyles.default
             )}
           >
             {mechanic.position === 1 ? (
@@ -93,9 +69,17 @@ export function MechanicRanking() {
 
           {/* Avatar & Name */}
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
-              {mechanic.initials}
-            </div>
+            {mechanic.avatarUrl ? (
+              <img 
+                src={mechanic.avatarUrl} 
+                alt={mechanic.name}
+                className="h-10 w-10 rounded-full object-cover"
+              />
+            ) : (
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
+                {mechanic.initials}
+              </div>
+            )}
             <div>
               <h4 className="font-semibold text-foreground">{mechanic.name}</h4>
               <div className="flex items-center gap-1 text-sm text-muted-foreground">
@@ -107,8 +91,7 @@ export function MechanicRanking() {
                   )}
                 />
                 <span>
-                  {mechanic.trend > 0 && "+"}
-                  {mechanic.trend}% este mês
+                  {mechanic.osCompleted} OS este mês
                 </span>
               </div>
             </div>
@@ -116,7 +99,7 @@ export function MechanicRanking() {
 
           {/* Stats */}
           <div className="ml-auto flex items-center gap-6">
-            <div className="text-center">
+            <div className="text-center hidden sm:block">
               <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                 <Wrench className="h-3.5 w-3.5" />
                 <span>OS</span>
@@ -126,13 +109,13 @@ export function MechanicRanking() {
               </p>
             </div>
 
-            <div className="text-center">
+            <div className="text-center hidden md:block">
               <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                 <Clock className="h-3.5 w-3.5" />
                 <span>Média</span>
               </div>
               <p className="font-display text-lg font-bold text-foreground">
-                {mechanic.avgTime}
+                {formatMinutes(mechanic.avgTimeMinutes)}
               </p>
             </div>
 
@@ -142,7 +125,7 @@ export function MechanicRanking() {
                 <span className="font-bold text-foreground">{mechanic.score}</span>
               </div>
               <Progress
-                value={mechanic.score}
+                value={(mechanic.score / maxScore) * 100}
                 className={cn(
                   "h-2",
                   mechanic.position === 1 && "[&>div]:bg-accent"
