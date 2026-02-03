@@ -1,8 +1,8 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Camera, Upload, X, Fuel, Gauge, Check } from "lucide-react";
+import { Camera, Upload, X, Fuel, Gauge, Check, Loader2, ImagePlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -30,6 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -46,10 +47,10 @@ const fuelLevels = [
 ] as const;
 
 const photoPositions = [
-  { id: "front", label: "Frente", required: true },
-  { id: "back", label: "Traseira", required: true },
-  { id: "left", label: "Lateral Esquerda", required: true },
-  { id: "right", label: "Lateral Direita", required: true },
+  { id: "front", label: "Frente", icon: "🚗", description: "Vista frontal do veículo" },
+  { id: "back", label: "Traseira", icon: "🚙", description: "Vista traseira do veículo" },
+  { id: "left", label: "Lateral Esq.", icon: "⬅️", description: "Lado do motorista" },
+  { id: "right", label: "Lateral Dir.", icon: "➡️", description: "Lado do passageiro" },
 ] as const;
 
 const formSchema = z.object({
@@ -69,6 +70,47 @@ interface CheckinDialogProps {
   trigger?: React.ReactNode;
 }
 
+// Compress image before upload
+async function compressImage(file: File, maxWidth = 1920, quality = 0.8): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      let width = img.width;
+      let height = img.height;
+
+      if (width > maxWidth) {
+        height = (height * maxWidth) / width;
+        width = maxWidth;
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        reject(new Error('Could not get canvas context'));
+        return;
+      }
+
+      ctx.drawImage(img, 0, 0, width, height);
+      canvas.toBlob(
+        (blob) => {
+          if (blob) {
+            resolve(blob);
+          } else {
+            reject(new Error('Could not compress image'));
+          }
+        },
+        'image/jpeg',
+        quality
+      );
+    };
+    img.onerror = () => reject(new Error('Could not load image'));
+    img.src = URL.createObjectURL(file);
+  });
+}
+
 export function CheckinDialog({ 
   open: controlledOpen, 
   onOpenChange: controlledOnOpenChange, 
@@ -82,6 +124,7 @@ export function CheckinDialog({
   const isControlled = controlledOpen !== undefined;
   const open = isControlled ? controlledOpen : internalOpen;
   const onOpenChange = isControlled ? controlledOnOpenChange : setInternalOpen;
+  
   const [photos, setPhotos] = useState<Record<string, File | null>>({
     front: null,
     back: null,
@@ -90,6 +133,8 @@ export function CheckinDialog({
   });
   const [photoPreviews, setPhotoPreviews] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [currentUpload, setCurrentUpload] = useState<string | null>(null);
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   
   const { toast } = useToast();
@@ -107,7 +152,7 @@ export function CheckinDialog({
     },
   });
 
-  const handlePhotoChange = (position: string, file: File | null) => {
+  const handlePhotoChange = useCallback((position: string, file: File | null) => {
     setPhotos(prev => ({ ...prev, [position]: file }));
     
     if (file) {
@@ -123,21 +168,27 @@ export function CheckinDialog({
         return newPreviews;
       });
     }
-  };
+  }, []);
 
   const triggerFileInput = (position: string) => {
     fileInputRefs.current[position]?.click();
   };
 
-  const allPhotosUploaded = photoPositions.every(pos => photos[pos.id] !== null);
+  const photosCount = Object.values(photos).filter(Boolean).length;
+  const allPhotosUploaded = photosCount === 4;
 
   const uploadPhoto = async (file: File, position: string): Promise<string> => {
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${workOrderId}/${position}-${Date.now()}.${fileExt}`;
+    setCurrentUpload(position);
+    
+    // Compress image before upload
+    const compressedBlob = await compressImage(file);
+    const compressedFile = new File([compressedBlob], `${position}.jpg`, { type: 'image/jpeg' });
+    
+    const fileName = `${workOrderId}/${position}-${Date.now()}.jpg`;
     
     const { error: uploadError } = await supabase.storage
       .from('attachments')
-      .upload(fileName, file);
+      .upload(fileName, compressedFile);
 
     if (uploadError) throw uploadError;
 
@@ -168,15 +219,23 @@ export function CheckinDialog({
     }
 
     setIsSubmitting(true);
+    setUploadProgress(0);
 
     try {
-      // Upload all photos
+      // Upload all photos with progress
       const photoUrls: Record<string, string> = {};
-      for (const [position, file] of Object.entries(photos)) {
+      const photoEntries = Object.entries(photos).filter(([, file]) => file !== null);
+      
+      for (let i = 0; i < photoEntries.length; i++) {
+        const [position, file] = photoEntries[i];
         if (file) {
           photoUrls[position] = await uploadPhoto(file, position);
+          setUploadProgress(((i + 1) / photoEntries.length) * 50);
         }
       }
+
+      setCurrentUpload(null);
+      setUploadProgress(60);
 
       // Create check-in record
       const { error: checkinError } = await supabase
@@ -193,6 +252,8 @@ export function CheckinDialog({
 
       if (checkinError) throw checkinError;
 
+      setUploadProgress(75);
+
       // Create attachment records for photos
       for (const [position, url] of Object.entries(photoUrls)) {
         await supabase
@@ -208,6 +269,8 @@ export function CheckinDialog({
           });
       }
 
+      setUploadProgress(90);
+
       // Update work order status
       await updateWorkOrder.mutateAsync({
         id: workOrderId,
@@ -216,14 +279,16 @@ export function CheckinDialog({
         },
       });
 
+      setUploadProgress(100);
+
       queryClient.invalidateQueries({ queryKey: ['work_orders'] });
 
       toast({
-        title: "Check-in realizado!",
-        description: "O veículo foi registrado com sucesso.",
+        title: "Check-in realizado! ✅",
+        description: "O veículo foi registrado com sucesso e está pronto para diagnóstico.",
       });
 
-      onOpenChange(false);
+      onOpenChange?.(false);
       
       // Reset form
       form.reset();
@@ -238,20 +303,33 @@ export function CheckinDialog({
       });
     } finally {
       setIsSubmitting(false);
+      setUploadProgress(0);
+      setCurrentUpload(null);
     }
   };
 
+  const resetDialog = useCallback(() => {
+    form.reset();
+    setPhotos({ front: null, back: null, left: null, right: null });
+    setPhotoPreviews({});
+    setUploadProgress(0);
+    setCurrentUpload(null);
+  }, [form]);
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(newOpen) => {
+      if (!newOpen) resetDialog();
+      onOpenChange?.(newOpen);
+    }}>
       {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-display flex items-center gap-2">
-            <Camera className="h-5 w-5" />
+            <Camera className="h-5 w-5 text-accent" />
             Check-in do Veículo
           </DialogTitle>
           <DialogDescription>
-            Registre o estado do veículo <strong>{vehiclePlate}</strong> na entrada da oficina.
+            Registre o estado do veículo <strong className="text-foreground">{vehiclePlate}</strong> na entrada da oficina.
           </DialogDescription>
         </DialogHeader>
 
@@ -259,10 +337,19 @@ export function CheckinDialog({
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             {/* Photos Grid */}
             <div className="space-y-3">
-              <FormLabel className="flex items-center gap-2">
-                <Camera className="h-4 w-4" />
-                Fotos Obrigatórias (4)
-              </FormLabel>
+              <div className="flex items-center justify-between">
+                <FormLabel className="flex items-center gap-2">
+                  <ImagePlus className="h-4 w-4" />
+                  Fotos Obrigatórias
+                </FormLabel>
+                <span className={cn(
+                  "text-sm font-medium",
+                  allPhotosUploaded ? "text-green-600" : "text-muted-foreground"
+                )}>
+                  {photosCount}/4 fotos
+                </span>
+              </div>
+              
               <div className="grid grid-cols-2 gap-3">
                 {photoPositions.map((pos) => (
                   <div key={pos.id} className="relative">
@@ -276,13 +363,14 @@ export function CheckinDialog({
                     />
                     
                     {photoPreviews[pos.id] ? (
-                      <div className="relative aspect-video rounded-lg overflow-hidden border-2 border-success">
+                      <div className="relative aspect-video rounded-xl overflow-hidden border-2 border-green-500 shadow-lg">
                         <img
                           src={photoPreviews[pos.id]}
                           alt={pos.label}
                           className="w-full h-full object-cover"
                         />
-                        <div className="absolute top-2 left-2 bg-success text-success-foreground text-xs px-2 py-1 rounded-full flex items-center gap-1">
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+                        <div className="absolute bottom-2 left-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1 font-medium">
                           <Check className="h-3 w-3" />
                           {pos.label}
                         </div>
@@ -290,33 +378,44 @@ export function CheckinDialog({
                           type="button"
                           variant="destructive"
                           size="icon"
-                          className="absolute top-2 right-2 h-6 w-6"
+                          className="absolute top-2 right-2 h-7 w-7 rounded-full shadow-lg"
                           onClick={() => handlePhotoChange(pos.id, null)}
                         >
-                          <X className="h-3 w-3" />
+                          <X className="h-4 w-4" />
                         </Button>
+                        {currentUpload === pos.id && (
+                          <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                            <Loader2 className="h-8 w-8 text-white animate-spin" />
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <button
                         type="button"
                         onClick={() => triggerFileInput(pos.id)}
                         className={cn(
-                          "w-full aspect-video rounded-lg border-2 border-dashed flex flex-col items-center justify-center gap-2 transition-colors",
-                          "hover:border-primary hover:bg-primary/5",
-                          "border-muted-foreground/30 bg-muted/30"
+                          "w-full aspect-video rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-1 transition-all",
+                          "hover:border-accent hover:bg-accent/5 hover:scale-[1.02]",
+                          "border-muted-foreground/30 bg-muted/20"
                         )}
                       >
-                        <Upload className="h-6 w-6 text-muted-foreground" />
-                        <span className="text-sm font-medium">{pos.label}</span>
-                        <span className="text-xs text-muted-foreground">Clique para tirar foto</span>
+                        <span className="text-2xl">{pos.icon}</span>
+                        <span className="text-sm font-semibold">{pos.label}</span>
+                        <span className="text-[10px] text-muted-foreground">{pos.description}</span>
+                        <div className="flex items-center gap-1 mt-1 text-xs text-accent">
+                          <Camera className="h-3 w-3" />
+                          <span>Tirar foto</span>
+                        </div>
                       </button>
                     )}
                   </div>
                 ))}
               </div>
+              
               {!allPhotosUploaded && (
-                <p className="text-sm text-destructive">
-                  * Todas as 4 fotos são obrigatórias
+                <p className="text-sm text-amber-600 bg-amber-50 dark:bg-amber-950/30 px-3 py-2 rounded-lg flex items-center gap-2">
+                  <Camera className="h-4 w-4 shrink-0" />
+                  Tire as {4 - photosCount} foto(s) restante(s) para continuar
                 </p>
               )}
             </div>
@@ -335,7 +434,8 @@ export function CheckinDialog({
                     <FormControl>
                       <Input
                         type="number"
-                        placeholder="0"
+                        placeholder="Ex: 45000"
+                        className="text-lg font-mono"
                         {...field}
                       />
                     </FormControl>
@@ -363,13 +463,18 @@ export function CheckinDialog({
                         {fuelLevels.map((level) => (
                           <SelectItem key={level.value} value={level.value}>
                             <div className="flex items-center gap-2">
-                              <div className="w-12 h-2 bg-muted rounded-full overflow-hidden">
+                              <div className="w-16 h-2.5 bg-muted rounded-full overflow-hidden">
                                 <div 
-                                  className="h-full bg-primary rounded-full"
+                                  className={cn(
+                                    "h-full rounded-full transition-all",
+                                    level.percent <= 25 ? "bg-red-500" :
+                                    level.percent <= 50 ? "bg-amber-500" :
+                                    "bg-green-500"
+                                  )}
                                   style={{ width: `${level.percent}%` }}
                                 />
                               </div>
-                              <span>{level.label}</span>
+                              <span className="font-medium">{level.label}</span>
                             </div>
                           </SelectItem>
                         ))}
@@ -390,7 +495,8 @@ export function CheckinDialog({
                   <FormLabel>Itens do Cliente no Veículo</FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="Ex: Documentos, pertences, acessórios..."
+                      placeholder="Ex: Documentos no porta-luvas, bolsa no banco traseiro, chave reserva..."
+                      className="min-h-[80px]"
                       {...field}
                     />
                   </FormControl>
@@ -405,10 +511,11 @@ export function CheckinDialog({
               name="observations"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Observações</FormLabel>
+                  <FormLabel>Observações (Avarias Existentes)</FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="Avarias existentes, arranhões, amassados..."
+                      placeholder="Ex: Arranhão na porta dianteira esquerda, amassado no para-lama traseiro direito..."
+                      className="min-h-[80px]"
                       {...field}
                     />
                   </FormControl>
@@ -417,21 +524,52 @@ export function CheckinDialog({
               )}
             />
 
-            <DialogFooter>
+            {/* Upload Progress */}
+            {isSubmitting && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">
+                    {uploadProgress < 50 ? `Enviando fotos...` :
+                     uploadProgress < 75 ? 'Salvando check-in...' :
+                     uploadProgress < 100 ? 'Atualizando OS...' :
+                     'Concluído!'}
+                  </span>
+                  <span className="font-medium">{Math.round(uploadProgress)}%</span>
+                </div>
+                <Progress value={uploadProgress} className="h-2" />
+              </div>
+            )}
+
+            <DialogFooter className="gap-2 sm:gap-0">
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => onOpenChange(false)}
+                onClick={() => onOpenChange?.(false)}
                 disabled={isSubmitting}
               >
                 Cancelar
               </Button>
               <Button
                 type="submit"
-                className="bg-success hover:bg-success/90"
+                className={cn(
+                  "gap-2",
+                  allPhotosUploaded 
+                    ? "bg-green-600 hover:bg-green-700" 
+                    : "bg-muted text-muted-foreground cursor-not-allowed"
+                )}
                 disabled={isSubmitting || !allPhotosUploaded}
               >
-                {isSubmitting ? "Salvando..." : "Confirmar Check-in"}
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Salvando...
+                  </>
+                ) : (
+                  <>
+                    <Check className="h-4 w-4" />
+                    Confirmar Check-in
+                  </>
+                )}
               </Button>
             </DialogFooter>
           </form>
