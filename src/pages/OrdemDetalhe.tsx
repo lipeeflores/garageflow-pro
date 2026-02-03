@@ -166,9 +166,9 @@ export default function OrdemDetalhe() {
           </div>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-3">
+        <div className="grid gap-4 md:gap-6 lg:grid-cols-3">
           {/* Main Content */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-2 space-y-4 md:space-y-6">
             {/* Vehicle & Customer Info */}
             <div className="grid gap-4 sm:grid-cols-2">
               {/* Vehicle Card */}
@@ -261,18 +261,18 @@ export default function OrdemDetalhe() {
 
             {/* Tabs */}
             <Tabs defaultValue="diagnosis" className="w-full">
-              <TabsList className="w-full grid grid-cols-3">
-                <TabsTrigger value="diagnosis" className="gap-2">
-                  <Wrench className="h-4 w-4" />
-                  <span className="hidden sm:inline">Diagnóstico</span>
+              <TabsList className="w-full grid grid-cols-3 h-auto">
+                <TabsTrigger value="diagnosis" className="gap-1 sm:gap-2 py-2 px-2 sm:px-3 text-xs sm:text-sm">
+                  <Wrench className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <span className="hidden xs:inline sm:inline">Diagnóstico</span>
                 </TabsTrigger>
-                <TabsTrigger value="budget" className="gap-2">
-                  <FileText className="h-4 w-4" />
-                  <span className="hidden sm:inline">Orçamento</span>
+                <TabsTrigger value="budget" className="gap-1 sm:gap-2 py-2 px-2 sm:px-3 text-xs sm:text-sm">
+                  <FileText className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <span className="hidden xs:inline sm:inline">Orçamento</span>
                 </TabsTrigger>
-                <TabsTrigger value="timeline" className="gap-2">
-                  <Clock className="h-4 w-4" />
-                  <span className="hidden sm:inline">Histórico</span>
+                <TabsTrigger value="timeline" className="gap-1 sm:gap-2 py-2 px-2 sm:px-3 text-xs sm:text-sm">
+                  <Clock className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <span className="hidden xs:inline sm:inline">Histórico</span>
                 </TabsTrigger>
               </TabsList>
 
