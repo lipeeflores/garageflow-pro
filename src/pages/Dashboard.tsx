@@ -4,6 +4,7 @@ import {
   WorkflowKanban,
   TodaySchedule,
   MechanicRanking,
+  PendingTasksAlert,
 } from "@/components/dashboard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -44,6 +45,9 @@ export default function Dashboard() {
       })}`}
     >
       <div className="space-y-4 md:space-y-6 animate-fade-in">
+        {/* Pending Tasks Alert - Top priority for Simone */}
+        <PendingTasksAlert />
+
         {/* Quick Actions */}
         <div className="flex flex-wrap gap-2 sm:gap-3">
           {isAdminOrManager && (
