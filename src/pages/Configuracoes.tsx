@@ -34,7 +34,6 @@ import {
   Wrench,
   Save,
   Loader2,
-  User,
   Mail,
   Phone,
   MapPin,
@@ -44,6 +43,12 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "@/hooks/useTheme";
+import {
+  CreateUserDialog,
+  EditUserDialog,
+  ToggleUserStatus,
+  DeleteUserDialog,
+} from "@/components/settings/UserManagementDialog";
 
 interface TenantSettings {
   company_name?: string;
@@ -354,19 +359,28 @@ export default function Configuracoes() {
           {/* Team Management */}
           <TabsContent value="team" className="space-y-4">
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="h-5 w-5" />
-                  Equipe
-                </CardTitle>
-                <CardDescription>
-                  Membros da equipe e seus papéis no sistema.
-                </CardDescription>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="h-5 w-5" />
+                    Gerenciamento de Equipe
+                  </CardTitle>
+                  <CardDescription>
+                    Adicione, edite ou remova membros da equipe.
+                  </CardDescription>
+                </div>
+                <CreateUserDialog />
               </CardHeader>
               <CardContent>
                 {loadingTeam ? (
                   <div className="space-y-3">
                     {[1, 2, 3].map(i => <Skeleton key={i} className="h-16" />)}
+                  </div>
+                ) : teamMembers?.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-12">
+                    <Users className="h-12 w-12 text-muted-foreground/50" />
+                    <p className="mt-4 text-muted-foreground">Nenhum membro cadastrado</p>
+                    <CreateUserDialog />
                   </div>
                 ) : (
                   <Table>
@@ -375,6 +389,7 @@ export default function Configuracoes() {
                         <TableHead>Membro</TableHead>
                         <TableHead>Função</TableHead>
                         <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Ações</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -406,9 +421,13 @@ export default function Configuracoes() {
                             )}
                           </TableCell>
                           <TableCell>
-                            <Badge variant={member.is_active ? "default" : "secondary"}>
-                              {member.is_active ? "Ativo" : "Inativo"}
-                            </Badge>
+                            <ToggleUserStatus user={member} />
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-1">
+                              <EditUserDialog user={member} />
+                              <DeleteUserDialog user={member} />
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
