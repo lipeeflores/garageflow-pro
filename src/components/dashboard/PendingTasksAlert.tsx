@@ -11,7 +11,10 @@ import {
   Clock,
   ChevronRight,
   DollarSign,
-  Bell
+  Bell,
+  PackageCheck,
+  Phone,
+  MessageCircle
 } from "lucide-react";
 import { useWorkOrders, type WorkOrder } from "@/hooks/useWorkOrders";
 import { cn } from "@/lib/utils";
@@ -33,8 +36,14 @@ export function PendingTasksAlert() {
     workflow_step: ["AGUARDANDO_APROVACAO"],
   });
 
+  // Fetch orders ready for pickup - need to notify customer
+  const { data: readyForPickupOrders } = useWorkOrders({
+    workflow_step: ["PRONTO_PARA_RETIRADA"],
+  });
+
   const pendingBudgetCount = pendingBudgetOrders?.length ?? 0;
   const pendingApprovalCount = pendingApprovalOrders?.length ?? 0;
+  const readyForPickupCount = readyForPickupOrders?.length ?? 0;
 
   // Play sound when new orders need budget
   useEffect(() => {
@@ -51,7 +60,22 @@ export function PendingTasksAlert() {
     }
   }, [pendingBudgetOrders, playedIds, playSound]);
 
-  if (pendingBudgetCount === 0 && pendingApprovalCount === 0) {
+  // Play sound when orders are ready for pickup
+  useEffect(() => {
+    if (readyForPickupOrders && readyForPickupOrders.length > 0) {
+      const newOrders = readyForPickupOrders.filter(o => !playedIds.has(`ready-${o.id}`));
+      if (newOrders.length > 0) {
+        playSound("ready");
+        setPlayedIds(prev => {
+          const newSet = new Set(prev);
+          newOrders.forEach(o => newSet.add(`ready-${o.id}`));
+          return newSet;
+        });
+      }
+    }
+  }, [readyForPickupOrders, playedIds, playSound]);
+
+  if (pendingBudgetCount === 0 && pendingApprovalCount === 0 && readyForPickupCount === 0) {
     return null;
   }
 
@@ -65,7 +89,7 @@ export function PendingTasksAlert() {
           <CardTitle className="text-base font-display flex items-center gap-2">
             Tarefas Pendentes
             <Badge variant="destructive" className="animate-pulse">
-              {pendingBudgetCount + pendingApprovalCount}
+              {pendingBudgetCount + pendingApprovalCount + readyForPickupCount}
             </Badge>
           </CardTitle>
         </div>
@@ -85,6 +109,27 @@ export function PendingTasksAlert() {
                     key={order.id} 
                     order={order} 
                     type="budget"
+                  />
+                ))}
+              </div>
+            </ScrollArea>
+          </div>
+        )}
+
+        {/* Ready for Pickup Section - Need to notify customer */}
+        {readyForPickupCount > 0 && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-sm font-medium text-success">
+              <PackageCheck className="h-4 w-4" />
+              <span>Prontos para Retirada ({readyForPickupCount})</span>
+            </div>
+            <ScrollArea className="max-h-[200px]">
+              <div className="space-y-2">
+                {readyForPickupOrders?.map((order) => (
+                  <PendingOrderCard 
+                    key={order.id} 
+                    order={order} 
+                    type="ready"
                   />
                 ))}
               </div>
@@ -124,7 +169,7 @@ export function PendingTasksAlert() {
 
 interface PendingOrderCardProps {
   order: WorkOrder;
-  type: "budget" | "approval";
+  type: "budget" | "approval" | "ready";
 }
 
 function PendingOrderCard({ order, type }: PendingOrderCardProps) {
@@ -143,6 +188,23 @@ function PendingOrderCard({ order, type }: PendingOrderCardProps) {
     return `${diffMins}min`;
   };
 
+  const formatPhoneForWhatsApp = (phone: string | undefined) => {
+    if (!phone) return null;
+    // Remove non-digits
+    const digits = phone.replace(/\D/g, '');
+    // Add Brazil country code if not present
+    if (digits.length === 11) {
+      return `55${digits}`;
+    }
+    return digits;
+  };
+
+  const whatsappPhone = formatPhoneForWhatsApp(order.customer?.phone_number);
+  const vehicleInfo = `${order.vehicle?.make} ${order.vehicle?.model} - Placa ${order.vehicle?.plate}`;
+  const pickupMessage = encodeURIComponent(
+    `Olá ${order.customer?.full_name}! 🚗\n\nSeu veículo ${vehicleInfo} está pronto para retirada!\n\nAguardamos você. 😊`
+  );
+
   return (
     <>
       <div
@@ -150,6 +212,8 @@ function PendingOrderCard({ order, type }: PendingOrderCardProps) {
           "flex items-center justify-between p-3 rounded-lg border transition-all",
           type === "budget" 
             ? "bg-warning/10 border-warning/30 hover:border-warning/50" 
+            : type === "ready"
+            ? "bg-success/10 border-success/30 hover:border-success/50"
             : "bg-muted/50 border-border hover:border-border/80"
         )}
       >
@@ -159,7 +223,8 @@ function PendingOrderCard({ order, type }: PendingOrderCardProps) {
             variant="outline" 
             className={cn(
               "font-display text-sm px-2 py-1 shrink-0",
-              type === "budget" && "border-warning text-warning bg-warning/10"
+              type === "budget" && "border-warning text-warning bg-warning/10",
+              type === "ready" && "border-success text-success bg-success/10"
             )}
           >
             {order.vehicle?.plate || "---"}
@@ -176,6 +241,13 @@ function PendingOrderCard({ order, type }: PendingOrderCardProps) {
             <div className="flex items-center gap-1 text-xs text-muted-foreground truncate">
               <User className="h-3 w-3 shrink-0" />
               <span className="truncate">{order.customer?.full_name}</span>
+              {order.customer?.phone_number && (
+                <>
+                  <span className="mx-1">•</span>
+                  <Phone className="h-3 w-3 shrink-0" />
+                  <span>{order.customer.phone_number}</span>
+                </>
+              )}
             </div>
           </div>
 
@@ -186,7 +258,7 @@ function PendingOrderCard({ order, type }: PendingOrderCardProps) {
           </div>
         </div>
 
-        {/* Action button */}
+        {/* Action buttons */}
         {type === "budget" ? (
           <Button 
             size="sm" 
@@ -197,6 +269,37 @@ function PendingOrderCard({ order, type }: PendingOrderCardProps) {
             <span className="hidden sm:inline">Montar Orçamento</span>
             <span className="sm:hidden">Orçar</span>
           </Button>
+        ) : type === "ready" ? (
+          <div className="flex items-center gap-2 ml-2 shrink-0">
+            {whatsappPhone && (
+              <Button 
+                size="sm" 
+                className="gap-1 bg-[#25D366] hover:bg-[#25D366]/90 text-white"
+                asChild
+              >
+                <a 
+                  href={`https://wa.me/${whatsappPhone}?text=${pickupMessage}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <MessageCircle className="h-3 w-3" />
+                  <span className="hidden sm:inline">Avisar Cliente</span>
+                  <span className="sm:hidden">WhatsApp</span>
+                </a>
+              </Button>
+            )}
+            <Button 
+              variant="ghost" 
+              size="sm"
+              className="gap-1"
+              asChild
+            >
+              <a href={`/ordem/${order.id}`}>
+                <FileText className="h-3 w-3" />
+                <span className="hidden sm:inline">Ver OS</span>
+              </a>
+            </Button>
+          </div>
         ) : (
           <Button 
             variant="ghost" 
