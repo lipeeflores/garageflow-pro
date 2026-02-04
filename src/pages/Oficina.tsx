@@ -155,8 +155,8 @@ export default function Oficina() {
 
   const ordersByBox = getOrdersByBox();
 
-  const renderKanbanRow = (columns: KanbanColumnConfig[]) => (
-    <div className="grid grid-cols-5 gap-3 min-w-[1100px]">
+  const renderKanbanRow = (columns: KanbanColumnConfig[], height: string = "h-[calc(50vh-120px)]") => (
+    <div className={cn("grid grid-cols-5 gap-3 min-w-[1100px]", height)}>
       {columns.map((column) => {
         const items = column.isAppointments
           ? appointments || []
