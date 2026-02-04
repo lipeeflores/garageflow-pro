@@ -23,7 +23,7 @@ export function KanbanColumn({
   emptyText = "Coluna Vazia",
 }: KanbanColumnProps) {
   return (
-    <div className="flex h-full w-[220px] min-w-[220px] flex-col rounded-lg bg-muted/30 border border-border/50">
+    <div className="flex h-full min-h-[320px] flex-col rounded-lg bg-muted/30 border border-border/50">
       {/* Header */}
       <div className="flex items-center gap-2 p-3 border-b border-border/50">
         <div
