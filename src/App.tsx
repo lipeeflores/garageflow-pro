@@ -18,6 +18,7 @@ import OrdemDetalhe from "./pages/OrdemDetalhe";
 import OrcamentoPublico from "./pages/OrcamentoPublico";
 import Ponto from "./pages/Ponto";
 import Financeiro from "./pages/Financeiro";
+import Configuracoes from "./pages/Configuracoes";
 import WorkshopTV from "./pages/WorkshopTV";
 import ClienteHistorico from "./pages/ClienteHistorico";
 import NotFound from "./pages/NotFound";
@@ -112,6 +113,14 @@ const App = () => (
               element={
                 <ProtectedRoute requiredRoles={['ADMIN', 'MANAGER']}>
                   <Financeiro />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/configuracoes"
+              element={
+                <ProtectedRoute requiredRoles={['ADMIN']}>
+                  <Configuracoes />
                 </ProtectedRoute>
               }
             />

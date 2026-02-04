@@ -7,3 +7,4 @@ export { QualityControlDialog } from './QualityControlDialog';
 export { ShareBudgetButton } from './ShareBudgetButton';
 export { PaymentDialog } from './PaymentDialog';
 export { ReturnWorkOrderDialog } from './ReturnWorkOrderDialog';
+export { PhotoUpload } from './PhotoUpload';
