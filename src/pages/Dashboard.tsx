@@ -18,27 +18,20 @@ import {
   TrendingUp,
   ChevronRight,
 } from "lucide-react";
-import { useWorkOrders } from "@/hooks/useWorkOrders";
-import { useTodayAppointments } from "@/hooks/useAppointments";
 import { useAuth } from "@/contexts/AuthContext";
 import { WorkOrderFormDialog } from "@/components/forms";
+import { useDashboardStats, formatDuration, formatCurrency } from "@/hooks/useDashboardStats";
 
 export default function Dashboard() {
   const { isAdminOrManager } = useAuth();
-  const { data: allWorkOrders } = useWorkOrders();
-  const { data: todayAppointments } = useTodayAppointments();
+  const { data: stats, isLoading } = useDashboardStats();
 
-  // Calculate stats
-  const activeOrders = allWorkOrders?.filter(wo => 
-    !['FINALIZADO', 'CANCELADO'].includes(wo.workflow_step)
-  ).length ?? 0;
-
-  const pendingBudget = allWorkOrders?.filter(wo => 
-    wo.workflow_step === 'AGUARDANDO_ORCAMENTO'
-  ).length ?? 0;
-
-  const todayVehicles = todayAppointments?.length ?? 0;
-  const arrivedVehicles = todayAppointments?.filter(a => a.status === 'CHEGOU').length ?? 0;
+  const activeOrders = stats?.activeOrders ?? 0;
+  const pendingBudget = stats?.pendingBudget ?? 0;
+  const todayVehicles = stats?.todayVehicles ?? 0;
+  const arrivedVehicles = stats?.arrivedVehicles ?? 0;
+  const avgTimePerOS = stats?.avgTimePerOS ?? 0;
+  const todayRevenue = stats?.todayRevenue ?? 0;
 
   return (
     <AppLayout
@@ -100,7 +93,7 @@ export default function Dashboard() {
           <div className="min-w-[160px] shrink-0 sm:min-w-0">
             <StatsCard
               title="Tempo Médio"
-              value="--"
+              value={formatDuration(avgTimePerOS)}
               subtitle="Por ordem de serviço"
               icon={Clock}
               variant="warning"
@@ -108,13 +101,13 @@ export default function Dashboard() {
           </div>
           {isAdminOrManager && (
             <div className="min-w-[160px] shrink-0 sm:min-w-0">
-              <StatsCard
-                title="Faturamento Hoje"
-                value="R$ --"
-                subtitle="Dados em breve"
-                icon={DollarSign}
-                variant="success"
-              />
+            <StatsCard
+              title="Faturamento Hoje"
+              value={formatCurrency(todayRevenue)}
+              subtitle="Receitas do dia"
+              icon={DollarSign}
+              variant="success"
+            />
             </div>
           )}
         </div>
