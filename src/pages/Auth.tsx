@@ -27,7 +27,7 @@ const signupSchema = z.object({
 
 export default function Auth() {
   const navigate = useNavigate();
-  const { user, signIn, signUp, loading } = useAuth();
+  const { user, userRole, signIn, signUp, loading } = useAuth();
   const { toast } = useToast();
   
   const [isLoading, setIsLoading] = useState(false);
@@ -43,11 +43,19 @@ export default function Auth() {
   const [signupPassword, setSignupPassword] = useState("");
   const [signupConfirmPassword, setSignupConfirmPassword] = useState("");
 
-  useEffect(() => {
-    if (user && !loading) {
-      navigate("/");
+  // Redirect based on role
+  const getRedirectPath = () => {
+    if (userRole?.role === 'MECHANIC') {
+      return '/ponto';
     }
-  }, [user, loading, navigate]);
+    return '/';
+  };
+
+  useEffect(() => {
+    if (user && userRole && !loading) {
+      navigate(getRedirectPath());
+    }
+  }, [user, userRole, loading, navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,7 +97,7 @@ export default function Auth() {
           title: "Bem-vindo!",
           description: "Login realizado com sucesso",
         });
-        navigate("/");
+        // Redirect is handled by useEffect based on user role
       }
     } catch (err) {
       toast({
