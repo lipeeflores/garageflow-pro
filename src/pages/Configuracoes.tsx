@@ -37,7 +37,10 @@ import {
   Mail,
   Phone,
   MapPin,
+  Tv,
+  ExternalLink,
 } from "lucide-react";
+import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -617,6 +620,30 @@ export default function Configuracoes() {
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* TV Link Card */}
+        <Card className="border-dashed">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Tv className="h-5 w-5 text-accent" />
+              Painel TV da Oficina
+            </CardTitle>
+            <CardDescription>
+              Exiba o painel de monitoramento em uma TV para acompanhar as OS em tempo real.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Link to="/tv" target="_blank">
+              <Button variant="outline" className="gap-2">
+                <ExternalLink className="h-4 w-4" />
+                Abrir Painel TV
+              </Button>
+            </Link>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Dica: Abra em modo tela cheia (F11) para melhor visualização.
+            </p>
+          </CardContent>
+        </Card>
       </div>
     </AppLayout>
   );
