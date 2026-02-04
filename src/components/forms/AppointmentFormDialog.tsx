@@ -248,6 +248,7 @@ export function AppointmentFormDialog({ selectedDate }: AppointmentFormDialogPro
                     <div className="relative">
                       <Input
                         placeholder="Nome completo"
+                        autoComplete="off"
                         {...field}
                         onChange={(e) => {
                           field.onChange(e.target.value);
