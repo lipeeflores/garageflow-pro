@@ -237,7 +237,48 @@ export function AppointmentFormDialog({ selectedDate }: AppointmentFormDialogPro
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            {/* Plate - Primary Search Field */}
+            {/* Customer Name with Search - First Field */}
+            <FormField
+              control={form.control}
+              name="customer_name"
+              render={({ field }) => (
+                <FormItem className="relative">
+                  <FormLabel>Nome do Cliente *</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <Input
+                        placeholder="Nome completo"
+                        {...field}
+                        onChange={(e) => {
+                          field.onChange(e.target.value);
+                          setSelectedCustomerId(null);
+                        }}
+                      />
+                      {loadingCustomers && (
+                        <Loader2 className="absolute right-3 top-3 h-4 w-4 animate-spin text-muted-foreground" />
+                      )}
+                    </div>
+                  </FormControl>
+                  {showCustomerResults && customerResults && customerResults.length > 0 && (
+                    <div className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-md">
+                      {customerResults.map((customer) => (
+                        <div
+                          key={customer.id}
+                          className="px-3 py-2 hover:bg-accent cursor-pointer text-sm"
+                          onClick={() => handleSelectCustomer(customer)}
+                        >
+                          <div className="font-medium">{customer.full_name}</div>
+                          <div className="text-muted-foreground text-xs">{customer.phone_number}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Plate - Search Field */}
             <FormField
               control={form.control}
               name="plate"
@@ -296,47 +337,6 @@ export function AppointmentFormDialog({ selectedDate }: AppointmentFormDialogPro
                   <FormControl>
                     <Input placeholder="Ex: Honda Civic" {...field} />
                   </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {/* Customer Name with Search */}
-            <FormField
-              control={form.control}
-              name="customer_name"
-              render={({ field }) => (
-                <FormItem className="relative">
-                  <FormLabel>Nome do Cliente *</FormLabel>
-                  <FormControl>
-                    <div className="relative">
-                      <Input
-                        placeholder="Nome completo"
-                        {...field}
-                        onChange={(e) => {
-                          field.onChange(e.target.value);
-                          setSelectedCustomerId(null);
-                        }}
-                      />
-                      {loadingCustomers && (
-                        <Loader2 className="absolute right-3 top-3 h-4 w-4 animate-spin text-muted-foreground" />
-                      )}
-                    </div>
-                  </FormControl>
-                  {showCustomerResults && customerResults && customerResults.length > 0 && (
-                    <div className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-md">
-                      {customerResults.map((customer) => (
-                        <div
-                          key={customer.id}
-                          className="px-3 py-2 hover:bg-accent cursor-pointer text-sm"
-                          onClick={() => handleSelectCustomer(customer)}
-                        >
-                          <div className="font-medium">{customer.full_name}</div>
-                          <div className="text-muted-foreground text-xs">{customer.phone_number}</div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
                   <FormMessage />
                 </FormItem>
               )}
