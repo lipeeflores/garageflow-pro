@@ -45,7 +45,7 @@ function SidebarContent({
   const pendingCount = workOrders?.length ?? 0;
 
   const mainNavItems: NavItem[] = [
-    { title: "Dashboard", icon: LayoutDashboard, href: "/" },
+    { title: "Dashboard", icon: LayoutDashboard, href: "/", roles: ['ADMIN', 'MANAGER'] },
     { title: "Agenda", icon: Calendar, href: "/agenda" },
     { title: "Oficina", icon: Wrench, href: "/oficina", badge: pendingCount > 0 ? pendingCount : undefined },
     { title: "Clientes", icon: Users, href: "/clientes", roles: ['ADMIN', 'MANAGER'] },
