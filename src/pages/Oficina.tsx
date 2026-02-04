@@ -1,6 +1,6 @@
 import { AppLayout } from "@/components/layout";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   CalendarCheck,
   Clock,
@@ -13,12 +13,15 @@ import {
   Gift,
   Flag,
   Plus,
+  Car,
 } from "lucide-react";
 import { useWorkOrders, type WorkflowStep } from "@/hooks/useWorkOrders";
 import { useTodayScheduledAppointments } from "@/hooks/useAppointments";
 import { WorkOrderFormDialog } from "@/components/forms";
 import { KanbanColumn, KanbanCard, AppointmentKanbanCard } from "@/components/oficina";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 interface KanbanColumnConfig {
   id: string;
@@ -29,7 +32,7 @@ interface KanbanColumnConfig {
   isAppointments?: boolean;
 }
 
-const columns: KanbanColumnConfig[] = [
+const topColumns: KanbanColumnConfig[] = [
   {
     id: "checkin",
     title: "Check-in (Dia)",
@@ -65,6 +68,9 @@ const columns: KanbanColumnConfig[] = [
     color: "bg-green-500",
     workflowSteps: ["AGUARDANDO_APROVACAO"],
   },
+];
+
+const bottomColumns: KanbanColumnConfig[] = [
   {
     id: "aprovado",
     title: "Aprovado",
@@ -102,9 +108,20 @@ const columns: KanbanColumnConfig[] = [
   },
 ];
 
+const allColumns = [...topColumns, ...bottomColumns];
+
+type BoxLocation = "BOX_1" | "BOX_2" | "BOX_3" | "BOX_4" | "PATIO";
+
+const boxLabels: Record<BoxLocation, string> = {
+  BOX_1: "Elevador 1",
+  BOX_2: "Elevador 2",
+  BOX_3: "Elevador 3",
+  BOX_4: "Elevador 4",
+  PATIO: "Pátio",
+};
+
 export default function Oficina() {
-  // Get all workflow steps for work orders query
-  const allWorkflowSteps = columns
+  const allWorkflowSteps = allColumns
     .filter((c) => c.workflowSteps)
     .flatMap((c) => c.workflowSteps!);
 
@@ -115,7 +132,6 @@ export default function Oficina() {
 
   const isLoading = appointmentsLoading || workOrdersLoading;
 
-  // Group work orders by workflow step
   const getOrdersForColumn = (config: KanbanColumnConfig) => {
     if (!config.workflowSteps || !workOrders) return [];
     return workOrders.filter((order) =>
@@ -123,13 +139,68 @@ export default function Oficina() {
     );
   };
 
+  // Group work orders by box location
+  const getOrdersByBox = () => {
+    if (!workOrders) return {};
+    const activeOrders = workOrders.filter(
+      (o) => o.workflow_step === "EM_EXECUCAO" || o.workflow_step === "EM_DIAGNOSTICO"
+    );
+    return activeOrders.reduce((acc, order) => {
+      const box = order.box_location || "PATIO";
+      if (!acc[box]) acc[box] = [];
+      acc[box].push(order);
+      return acc;
+    }, {} as Record<string, typeof workOrders>);
+  };
+
+  const ordersByBox = getOrdersByBox();
+
+  const renderKanbanRow = (columns: KanbanColumnConfig[]) => (
+    <div className="grid grid-cols-5 gap-3 min-w-[1100px]">
+      {columns.map((column) => {
+        const items = column.isAppointments
+          ? appointments || []
+          : getOrdersForColumn(column);
+
+        return (
+          <KanbanColumn
+            key={column.id}
+            title={column.title}
+            icon={column.icon}
+            color={column.color}
+            count={items.length}
+            emptyIcon={column.icon}
+          >
+            {column.isAppointments
+              ? (appointments || []).map((appointment) => (
+                  <AppointmentKanbanCard
+                    key={appointment.id}
+                    appointment={appointment}
+                  />
+                ))
+              : getOrdersForColumn(column).map((order) => (
+                  <KanbanCard key={order.id} order={order} />
+                ))}
+          </KanbanColumn>
+        );
+      })}
+    </div>
+  );
+
   if (isLoading) {
     return (
       <AppLayout title="Oficina" subtitle="Kanban de Ordens de Serviço">
-        <div className="flex gap-4 h-[calc(100vh-180px)] overflow-x-auto pb-4">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <Skeleton key={i} className="h-full w-[220px] min-w-[220px] rounded-lg" />
-          ))}
+        <div className="space-y-4">
+          <div className="grid grid-cols-5 gap-3">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <Skeleton key={i} className="h-[280px] rounded-lg" />
+            ))}
+          </div>
+          <div className="grid grid-cols-5 gap-3">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <Skeleton key={i} className="h-[280px] rounded-lg" />
+            ))}
+          </div>
         </div>
       </AppLayout>
     );
@@ -141,6 +212,32 @@ export default function Oficina() {
       subtitle="Kanban de Ordens de Serviço"
       fullWidth
     >
+      {/* Box Location Status */}
+      <div className="mb-4 flex flex-wrap gap-2">
+        {(Object.keys(boxLabels) as BoxLocation[]).map((box) => {
+          const orders = ordersByBox[box] || [];
+          const isOccupied = orders.length > 0;
+          return (
+            <Badge
+              key={box}
+              variant={isOccupied ? "default" : "outline"}
+              className={cn(
+                "px-3 py-1.5 gap-2",
+                isOccupied && "bg-primary"
+              )}
+            >
+              <Car className="h-3.5 w-3.5" />
+              <span>{boxLabels[box]}</span>
+              {isOccupied && (
+                <span className="ml-1 font-bold">
+                  {orders[0]?.vehicle?.plate}
+                </span>
+              )}
+            </Badge>
+          );
+        })}
+      </div>
+
       <div className="flex items-center justify-end mb-4">
         <WorkOrderFormDialog
           trigger={
@@ -151,37 +248,15 @@ export default function Oficina() {
           }
         />
       </div>
+
       <ScrollArea className="w-full">
-        <div className="flex gap-4 h-[calc(100vh-180px)] pb-4 animate-fade-in">
-          {columns.map((column) => {
-            const items = column.isAppointments
-              ? appointments || []
-              : getOrdersForColumn(column);
-            
-            return (
-              <KanbanColumn
-                key={column.id}
-                title={column.title}
-                icon={column.icon}
-                color={column.color}
-                count={items.length}
-                emptyIcon={column.icon}
-              >
-                {column.isAppointments
-                  ? (appointments || []).map((appointment) => (
-                      <AppointmentKanbanCard
-                        key={appointment.id}
-                        appointment={appointment}
-                      />
-                    ))
-                  : getOrdersForColumn(column).map((order) => (
-                      <KanbanCard key={order.id} order={order} />
-                    ))}
-              </KanbanColumn>
-            );
-          })}
+        <div className="space-y-4 pb-4 animate-fade-in">
+          {/* Top Row - 5 columns */}
+          {renderKanbanRow(topColumns)}
+          
+          {/* Bottom Row - 5 columns */}
+          {renderKanbanRow(bottomColumns)}
         </div>
-        <ScrollBar orientation="horizontal" />
       </ScrollArea>
     </AppLayout>
   );
