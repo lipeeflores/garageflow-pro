@@ -86,92 +86,104 @@ function OSQueue({ highlightedOS }: OSQueueProps) {
     );
   }
 
-  return (
-    <div className="grid grid-cols-6 gap-3 h-full">
-      {workflowColumns.map((column) => {
-        const orders = getOrdersByStep(column.id);
-        const Icon = column.icon;
-        
-        return (
-          <div
-            key={column.id}
-            className="flex flex-col rounded-xl bg-card/50 backdrop-blur border border-border/50"
-          >
-            {/* Column Header */}
-            <div className="p-3 border-b border-border/50">
-              <div className="flex items-center gap-2">
-                <div className={cn("p-1.5 rounded-lg", column.color)}>
-                  <Icon className="h-4 w-4 text-white" />
-                </div>
-                <h3 className="text-sm font-semibold truncate">{column.title}</h3>
-                <Badge 
-                  variant="secondary" 
+  const topColumns = workflowColumns.slice(0, 3);
+  const bottomColumns = workflowColumns.slice(3, 6);
+
+  const renderColumn = (column: WorkflowColumn) => {
+    const orders = getOrdersByStep(column.id);
+    const Icon = column.icon;
+    
+    return (
+      <div
+        key={column.id}
+        className="flex flex-col rounded-xl bg-card/50 backdrop-blur border border-border/50"
+      >
+        {/* Column Header */}
+        <div className="p-4 border-b border-border/50">
+          <div className="flex items-center gap-3">
+            <div className={cn("p-2 rounded-lg", column.color)}>
+              <Icon className="h-5 w-5 text-white" />
+            </div>
+            <h3 className="text-lg font-semibold">{column.title}</h3>
+            <Badge 
+              variant="secondary" 
+              className={cn(
+                "ml-auto text-sm font-bold px-3 py-1",
+                orders.length > 0 && "bg-accent text-accent-foreground"
+              )}
+            >
+              {orders.length}
+            </Badge>
+          </div>
+        </div>
+
+        {/* Cards */}
+        <ScrollArea className="flex-1 p-3">
+          <div className="space-y-3">
+            {orders.length === 0 ? (
+              <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
+                Vazio
+              </div>
+            ) : (
+              orders.slice(0, 6).map((order) => (
+                <div
+                  key={order.id}
                   className={cn(
-                    "ml-auto text-xs font-bold",
-                    orders.length > 0 && "bg-accent text-accent-foreground"
+                    "p-4 rounded-lg bg-background border transition-all",
+                    order.priority === "ALTA" 
+                      ? "border-destructive/50 animate-pulse-slow" 
+                      : "border-border/50",
+                    highlightedOS.has(order.id) && "ring-2 ring-accent animate-pulse"
                   )}
                 >
-                  {orders.length}
-                </Badge>
-              </div>
-            </div>
-
-            {/* Cards */}
-            <ScrollArea className="flex-1 p-2">
-              <div className="space-y-2">
-                {orders.length === 0 ? (
-                  <div className="flex items-center justify-center py-6 text-xs text-muted-foreground">
-                    Vazio
+                  <div className="flex items-center justify-between">
+                    <span className="font-display text-2xl font-bold">
+                      {order.vehicle?.plate || "---"}
+                    </span>
+                    {order.priority === "ALTA" && (
+                      <span className="text-lg">🔴</span>
+                    )}
+                    {highlightedOS.has(order.id) && (
+                      <Bell className="h-5 w-5 text-accent animate-bounce" />
+                    )}
                   </div>
-                ) : (
-                  orders.slice(0, 8).map((order) => (
-                    <div
-                      key={order.id}
-                      className={cn(
-                        "p-2.5 rounded-lg bg-background border transition-all",
-                        order.priority === "ALTA" 
-                          ? "border-destructive/50 animate-pulse-slow" 
-                          : "border-border/50",
-                        highlightedOS.has(order.id) && "ring-2 ring-accent animate-pulse"
-                      )}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="font-display text-lg font-bold">
-                          {order.vehicle?.plate || "---"}
-                        </span>
-                        {order.priority === "ALTA" && (
-                          <span className="text-xs">🔴</span>
-                        )}
-                        {highlightedOS.has(order.id) && (
-                          <Bell className="h-3.5 w-3.5 text-accent animate-bounce" />
-                        )}
+                  <div className="mt-2 text-base text-muted-foreground">
+                    {order.vehicle?.make} {order.vehicle?.model}
+                  </div>
+                  {order.mechanic && (
+                    <div className="mt-2 flex items-center gap-2">
+                      <div className="h-6 w-6 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary">
+                        {order.mechanic.full_name.split(" ").map(n => n[0]).join("").slice(0, 2)}
                       </div>
-                      <div className="mt-1 text-xs text-muted-foreground truncate">
-                        {order.vehicle?.make} {order.vehicle?.model}
-                      </div>
-                      {order.mechanic && (
-                        <div className="mt-1.5 flex items-center gap-1.5">
-                          <div className="h-4 w-4 rounded-full bg-primary/20 flex items-center justify-center text-[8px] font-bold text-primary">
-                            {order.mechanic.full_name.split(" ").map(n => n[0]).join("").slice(0, 2)}
-                          </div>
-                          <span className="text-[10px] text-muted-foreground truncate">
-                            {order.mechanic.full_name.split(" ")[0]}
-                          </span>
-                        </div>
-                      )}
+                      <span className="text-sm text-muted-foreground">
+                        {order.mechanic.full_name.split(" ")[0]}
+                      </span>
                     </div>
-                  ))
-                )}
-                {orders.length > 8 && (
-                  <div className="text-center text-xs text-muted-foreground py-1">
-                    +{orders.length - 8} mais
-                  </div>
-                )}
+                  )}
+                </div>
+              ))
+            )}
+            {orders.length > 6 && (
+              <div className="text-center text-sm text-muted-foreground py-2">
+                +{orders.length - 6} mais
               </div>
-            </ScrollArea>
+            )}
           </div>
-        );
-      })}
+        </ScrollArea>
+      </div>
+    );
+  };
+
+  return (
+    <div className="grid grid-rows-2 gap-4 h-full">
+      {/* Top Row - 3 columns */}
+      <div className="grid grid-cols-3 gap-4">
+        {topColumns.map(renderColumn)}
+      </div>
+      {/* Bottom Row - 3 columns */}
+      <div className="grid grid-cols-3 gap-4">
+        {bottomColumns.map(renderColumn)}
+      </div>
     </div>
   );
 }
@@ -431,7 +443,7 @@ export default function WorkshopTV() {
   }, [profile?.tenant_id, soundEnabled, playSound, highlightOS]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/30 p-6">
+    <div className="dark min-h-screen bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800 p-6 text-slate-50">
       {/* Header */}
       <header className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
@@ -525,8 +537,8 @@ export default function WorkshopTV() {
       </div>
 
       {/* Footer Status Bar */}
-      <footer className="fixed bottom-0 left-0 right-0 h-10 bg-background/80 backdrop-blur border-t border-border/50 flex items-center justify-between px-6">
-        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+      <footer className="fixed bottom-0 left-0 right-0 h-10 bg-slate-900/90 backdrop-blur border-t border-slate-700/50 flex items-center justify-between px-6">
+        <div className="flex items-center gap-4 text-xs text-slate-400">
           <span>Realtime: Ativo</span>
           <span>•</span>
           <span>Última atualização: {format(lastUpdate, "HH:mm:ss")}</span>
@@ -538,7 +550,7 @@ export default function WorkshopTV() {
             testSounds();
             toast.info("Testando todos os sons...");
           }}
-          className="text-xs text-muted-foreground hover:text-foreground"
+          className="text-xs text-slate-400 hover:text-slate-50"
         >
           <Volume2 className="h-3.5 w-3.5 mr-1" />
           Testar Sons
