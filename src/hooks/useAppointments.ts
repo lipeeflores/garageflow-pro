@@ -71,6 +71,41 @@ export function useTodayAppointments() {
   return useAppointments(new Date());
 }
 
+export function useTodayScheduledAppointments() {
+  const { profile } = useAuth();
+
+  return useQuery({
+    queryKey: ['appointments', 'today', 'scheduled'],
+    queryFn: async () => {
+      if (!profile?.tenant_id) return [];
+
+      const today = new Date();
+      const startOfDay = new Date(today);
+      startOfDay.setHours(0, 0, 0, 0);
+      
+      const endOfDay = new Date(today);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      const { data, error } = await supabase
+        .from('appointments')
+        .select(`
+          *,
+          customer:customers(full_name, phone_number),
+          vehicle:vehicles(plate, make, model)
+        `)
+        .eq('tenant_id', profile.tenant_id)
+        .eq('status', 'AGENDADO')
+        .gte('scheduled_at', startOfDay.toISOString())
+        .lte('scheduled_at', endOfDay.toISOString())
+        .order('scheduled_at');
+
+      if (error) throw error;
+      return data as Appointment[];
+    },
+    enabled: !!profile?.tenant_id,
+  });
+}
+
 export function useCreateAppointment() {
   const queryClient = useQueryClient();
   const { profile, user } = useAuth();
@@ -137,6 +172,70 @@ export function useUpdateAppointment() {
       toast({
         title: "Erro",
         description: "Erro ao atualizar agendamento",
+        variant: "destructive",
+      });
+    },
+  });
+}
+
+export function useConvertAppointmentToWorkOrder() {
+  const queryClient = useQueryClient();
+  const { profile, user } = useAuth();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async ({ 
+      appointmentId, 
+      customerId, 
+      vehicleId, 
+      reason 
+    }: { 
+      appointmentId: string; 
+      customerId: string; 
+      vehicleId: string;
+      reason: string;
+    }) => {
+      if (!profile?.tenant_id) throw new Error("Tenant not found");
+
+      // 1. Update appointment status to CHEGOU
+      const { error: appointmentError } = await supabase
+        .from('appointments')
+        .update({ status: 'CHEGOU' })
+        .eq('id', appointmentId);
+
+      if (appointmentError) throw appointmentError;
+
+      // 2. Create work order linked to appointment
+      const { data: workOrder, error: workOrderError } = await supabase
+        .from('work_orders')
+        .insert({
+          tenant_id: profile.tenant_id,
+          customer_id: customerId,
+          vehicle_id: vehicleId,
+          appointment_id: appointmentId,
+          initial_complaint: reason,
+          workflow_step: 'AGUARDANDO_CHECKIN',
+          created_by: user?.id,
+        })
+        .select()
+        .single();
+
+      if (workOrderError) throw workOrderError;
+      return workOrder;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['work_orders'] });
+      toast({
+        title: "Cliente chegou! 🚗",
+        description: "Ordem de serviço criada automaticamente.",
+      });
+    },
+    onError: (error) => {
+      console.error('Error converting appointment:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao registrar chegada do cliente",
         variant: "destructive",
       });
     },
