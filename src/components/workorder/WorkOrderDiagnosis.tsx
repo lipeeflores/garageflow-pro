@@ -10,7 +10,8 @@ import {
   Loader2, 
   ChevronDown,
   ChevronUp,
-  Mic
+  Mic,
+  Camera
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -37,6 +38,7 @@ import {
 } from "@/hooks/useWorkOrderDiagnostics";
 import { useUpdateWorkOrder } from "@/hooks/useWorkOrders";
 import { AudioRecorder } from "./AudioRecorder";
+import { PhotoUpload } from "./PhotoUpload";
 import type { WorkflowStep } from "@/hooks/useWorkOrders";
 
 const diagnosisSchema = z.object({
@@ -349,6 +351,24 @@ export function WorkOrderDiagnosis({
             Nenhum diagnóstico registrado
           </p>
         </div>
+      )}
+
+      {/* Photo Upload Section */}
+      {(currentStep === "EM_DIAGNOSTICO" || currentStep === "EM_EXECUCAO" || currentStep === "AJUSTES") && canEdit && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Camera className="h-4 w-4" />
+              Fotos do {currentStep === "EM_DIAGNOSTICO" ? "Diagnóstico" : "Serviço"}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <PhotoUpload
+              workOrderId={workOrderId}
+              attachmentType={currentStep === "EM_DIAGNOSTICO" ? "DIAGNOSIS_PHOTO" : "EXECUTION_PHOTO"}
+            />
+          </CardContent>
+        </Card>
       )}
     </div>
   );

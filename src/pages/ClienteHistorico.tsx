@@ -24,7 +24,7 @@ import {
   Calendar,
   Clock,
   User,
-  Edit,
+  Pencil,
   History,
   Download,
 } from "lucide-react";
@@ -32,6 +32,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useCustomerHistory } from "@/hooks/useCustomerHistory";
 import { usePDFExport } from "@/hooks/usePDFExport";
+import { CustomerEditDialog } from "@/components/forms";
 import { cn } from "@/lib/utils";
 
 const workflowStepLabels: Record<string, string> = {
@@ -127,14 +128,36 @@ export default function ClienteHistorico() {
             Voltar para Clientes
           </Button>
           
-          <Button 
-            variant="outline" 
-            className="gap-2"
-            onClick={() => id && exportCustomerHistoryPDF(id)}
-          >
-            <Download className="h-4 w-4" />
-            Exportar Histórico PDF
-          </Button>
+          <div className="flex gap-2">
+            <CustomerEditDialog
+              customer={{
+                id: customer.id,
+                tenant_id: customer.tenant_id,
+                full_name: customer.full_name,
+                phone_number: customer.phone_number,
+                email: customer.email,
+                cpf_cnpj: customer.cpf_cnpj,
+                address: customer.address,
+                internal_notes: customer.internal_notes,
+                created_at: customer.created_at ?? "",
+                updated_at: customer.updated_at ?? "",
+              }}
+              trigger={
+                <Button variant="outline" className="gap-2">
+                  <Pencil className="h-4 w-4" />
+                  Editar Cliente
+                </Button>
+              }
+            />
+            <Button 
+              variant="outline" 
+              className="gap-2"
+              onClick={() => id && exportCustomerHistoryPDF(id)}
+            >
+              <Download className="h-4 w-4" />
+              Exportar PDF
+            </Button>
+          </div>
         </div>
 
         {/* Customer Info Card */}
