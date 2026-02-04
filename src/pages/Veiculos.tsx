@@ -20,6 +20,7 @@ import {
   ChevronRight,
   Loader2,
   Plus,
+  Pencil,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -28,11 +29,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useState } from "react";
-import { useVehicles } from "@/hooks/useVehicles";
-import { VehicleFormDialog } from "@/components/forms";
+import { useNavigate } from "react-router-dom";
+import { useVehicles, type Vehicle } from "@/hooks/useVehicles";
+import { VehicleFormDialog, VehicleEditDialog } from "@/components/forms";
 
 export default function Veiculos() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
+  const navigate = useNavigate();
   const { data: vehicles, isLoading, error } = useVehicles(searchQuery || undefined);
 
   return (
@@ -153,18 +157,20 @@ export default function Veiculos() {
                               <MoreHorizontal className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem>
-                              <ChevronRight className="mr-2 h-4 w-4" />
-                              Ver detalhes
+                          <DropdownMenuContent align="end" className="bg-popover">
+                            <DropdownMenuItem onClick={() => setEditingVehicle(vehicle)}>
+                              <Pencil className="mr-2 h-4 w-4" />
+                              Editar Veículo
                             </DropdownMenuItem>
-                            <DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => vehicle.customer && navigate(`/clientes/${vehicle.customer_id}`)}
+                            >
+                              <ChevronRight className="mr-2 h-4 w-4" />
+                              Ver Proprietário
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => navigate(`/ordens?vehicle=${vehicle.plate}`)}>
                               <FileText className="mr-2 h-4 w-4" />
                               Histórico de OS
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <Plus className="mr-2 h-4 w-4" />
-                              Nova OS
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -176,6 +182,16 @@ export default function Veiculos() {
             )}
           </CardContent>
         </Card>
+
+        {/* Edit Dialog */}
+        {editingVehicle && (
+          <VehicleEditDialog
+            vehicle={editingVehicle}
+            open={!!editingVehicle}
+            onOpenChange={(open) => !open && setEditingVehicle(null)}
+            onSuccess={() => setEditingVehicle(null)}
+          />
+        )}
       </div>
     </AppLayout>
   );

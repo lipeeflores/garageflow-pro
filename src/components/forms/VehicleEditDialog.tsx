@@ -40,10 +40,29 @@ interface VehicleEditDialogProps {
   vehicle: Vehicle;
   trigger?: React.ReactNode;
   onSuccess?: () => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export function VehicleEditDialog({ vehicle, trigger, onSuccess }: VehicleEditDialogProps) {
-  const [open, setOpen] = useState(false);
+export function VehicleEditDialog({ 
+  vehicle, 
+  trigger, 
+  onSuccess, 
+  open: controlledOpen, 
+  onOpenChange 
+}: VehicleEditDialogProps) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
+  
+  const handleOpenChange = (newOpen: boolean) => {
+    if (isControlled) {
+      onOpenChange?.(newOpen);
+    } else {
+      setInternalOpen(newOpen);
+    }
+  };
+  
   const updateVehicle = useUpdateVehicle();
 
   const form = useForm<VehicleFormData>({
@@ -87,7 +106,7 @@ export function VehicleEditDialog({ vehicle, trigger, onSuccess }: VehicleEditDi
         },
       });
       
-      setOpen(false);
+      handleOpenChange(false);
       onSuccess?.();
     } catch (error) {
       // Error handled by hook
@@ -95,7 +114,7 @@ export function VehicleEditDialog({ vehicle, trigger, onSuccess }: VehicleEditDi
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         {trigger || (
           <Button variant="outline" size="sm" className="gap-2">
@@ -236,7 +255,7 @@ export function VehicleEditDialog({ vehicle, trigger, onSuccess }: VehicleEditDi
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setOpen(false)}
+                onClick={() => handleOpenChange(false)}
               >
                 Cancelar
               </Button>
