@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { useTodayAppointments, type AppointmentStatus } from "@/hooks/useAppointments";
-import { Clock, Car, User, ArrowRight, Loader2, Phone, Check, MoreHorizontal } from "lucide-react";
+import { useAppointments, type AppointmentStatus } from "@/hooks/useAppointments";
+import { Clock, Car, User, Loader2, Phone, Check, MoreHorizontal } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -29,7 +29,9 @@ const statusLabels: Record<AppointmentStatus, string> = {
 };
 
 export function TodaySchedule() {
-  const { data: appointments, isLoading, error } = useTodayAppointments();
+  // Use a data de hoje diretamente para garantir que funcione
+  const today = new Date();
+  const { data: appointments, isLoading, error } = useAppointments(today);
 
   if (isLoading) {
     return (
