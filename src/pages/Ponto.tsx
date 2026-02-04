@@ -440,44 +440,6 @@ export default function Ponto() {
     }
   };
 
-  // Submit without photo (fallback)
-  const submitWithoutPhoto = async () => {
-    if (!nextEvent || !user?.id || !profile?.tenant_id) return;
-    
-    setIsSubmitting(true);
-    
-    try {
-      // Create timeclock event without photo
-      const { error: eventError } = await supabase
-        .from('timeclock_events')
-        .insert({
-          tenant_id: profile.tenant_id,
-          profile_id: user.id,
-          event_type: nextEvent,
-          photo_attachment_id: null,
-        });
-      
-      if (eventError) throw eventError;
-      
-      queryClient.invalidateQueries({ queryKey: ['timeclock_events'] });
-      
-      toast({
-        title: "Ponto registrado!",
-        description: `${eventConfig[nextEvent].label} registrada às ${format(new Date(), "HH:mm")} (sem foto)`,
-      });
-      
-      setShowFallbackDialog(false);
-    } catch (error) {
-      console.error('Timeclock error:', error);
-      toast({
-        title: "Erro ao registrar ponto",
-        description: "Tente novamente.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
   if (isLoading) {
     return (
@@ -548,15 +510,6 @@ export default function Ponto() {
                   >
                     <Camera className="h-5 w-5 mr-2" />
                     Abrir Câmera
-                  </Button>
-                  <Button
-                    size="lg"
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => setShowFallbackDialog(true)}
-                  >
-                    <CameraOff className="h-5 w-5 mr-2" />
-                    Sem Câmera
                   </Button>
                 </div>
               </div>
@@ -683,13 +636,13 @@ export default function Ponto() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-warning" />
-              Registrar Ponto Sem Câmera
+              Problema com a Câmera
             </DialogTitle>
             <DialogDescription>
               {cameraError ? (
                 <span className="text-destructive">{cameraError}</span>
               ) : (
-                "Você pode fazer upload de uma foto ou registrar sem foto."
+                "Não foi possível acessar a câmera. Faça upload de uma foto para registrar o ponto."
               )}
             </DialogDescription>
           </DialogHeader>
@@ -749,36 +702,11 @@ export default function Ponto() {
               )}
             </div>
 
-            {/* Divider */}
+            {/* Info message */}
             {!uploadedPhotoPreview && (
-              <>
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t" />
-                  </div>
-                  <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-background px-2 text-muted-foreground">
-                      ou
-                    </span>
-                  </div>
-                </div>
-
-                {/* Register without photo */}
-                <div className="text-center">
-                  <Button
-                    variant="secondary"
-                    className="w-full"
-                    onClick={submitWithoutPhoto}
-                    disabled={isSubmitting}
-                  >
-                    <CameraOff className="h-4 w-4 mr-2" />
-                    {isSubmitting ? "Registrando..." : "Registrar Sem Foto"}
-                  </Button>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    O registro sem foto ficará marcado no histórico
-                  </p>
-                </div>
-              </>
+              <p className="text-xs text-muted-foreground text-center">
+                É obrigatório enviar uma foto para registrar o ponto.
+              </p>
             )}
           </div>
 
