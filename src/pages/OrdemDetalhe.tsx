@@ -88,7 +88,11 @@ export default function OrdemDetalhe() {
   const updateWorkOrder = useUpdateWorkOrder();
   const { exportWorkOrderPDF, exportBudgetPDF } = usePDFExport();
   const [mechanicPickerOpen, setMechanicPickerOpen] = useState(false);
+  const [allChecklistDone, setAllChecklistDone] = useState(false);
 
+  const handleChecklistStatus = useCallback((allChecked: boolean) => {
+    setAllChecklistDone(allChecked);
+  }, []);
   const canEdit = isAdminOrManager || 
     (workOrder?.current_mechanic_id === user?.id);
 
