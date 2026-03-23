@@ -24,7 +24,7 @@ export interface Bill {
 
 export type BillInsert = Omit<Bill, "id" | "created_at" | "updated_at" | "status" | "paid_at" | "paid_amount">;
 
-export function useBills(filter?: { category?: "FIXA" | "FLUTUANTE"; status?: string }) {
+export function useBills(filter?: { category?: "FIXA" | "FLUTUANTE"; status?: "PENDENTE" | "PAGO" | "VENCIDO" | "CANCELADO" }) {
   const { profile } = useAuth();
 
   return useQuery({
