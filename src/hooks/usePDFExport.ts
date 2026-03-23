@@ -147,6 +147,7 @@ export function usePDFExport() {
           id,
           created_at,
           total_amount,
+          initial_complaint,
           customer:customers(full_name, phone_number, email),
           vehicle:vehicles(plate, make, model, year)
         `)
@@ -166,9 +167,24 @@ export function usePDFExport() {
         `)
         .eq('work_order_id', workOrderId);
 
+      // Fetch diagnostics
+      const { data: diagnostics } = await supabase
+        .from('work_order_diagnostics')
+        .select('technical_report, created_at, mechanic_id')
+        .eq('work_order_id', workOrderId)
+        .order('created_at', { ascending: false });
+
+      const diagMechanicIds = [...new Set(diagnostics?.map(d => d.mechanic_id).filter(Boolean) || [])];
+      const { data: diagMechanics } = diagMechanicIds.length > 0
+        ? await supabase.from('profiles').select('id, full_name').in('id', diagMechanicIds)
+        : { data: [] };
+      const diagMechanicMap: Record<string, string> = {};
+      diagMechanics?.forEach(m => { diagMechanicMap[m.id] = m.full_name; });
+
       await generateBudgetPDF({
         id: workOrder.id,
         created_at: workOrder.created_at!,
+        initial_complaint: workOrder.initial_complaint || undefined,
         customer: {
           full_name: workOrder.customer?.full_name || 'Cliente',
           phone_number: workOrder.customer?.phone_number || '-',
@@ -191,6 +207,11 @@ export function usePDFExport() {
                 is_approved: item.pricing[0].is_approved || false,
               }
             : undefined,
+        })),
+        diagnostics: (diagnostics || []).map(d => ({
+          technical_report: d.technical_report,
+          created_at: d.created_at!,
+          mechanic_name: diagMechanicMap[d.mechanic_id],
         })),
         total_amount: workOrder.total_amount || 0,
         validity_days: 15,
