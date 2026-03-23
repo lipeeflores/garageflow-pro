@@ -15,6 +15,7 @@ import {
 interface BudgetData {
   id: string;
   created_at: string;
+  initial_complaint?: string;
   customer: {
     full_name: string;
     phone_number: string;
@@ -35,6 +36,11 @@ interface BudgetData {
       total_price: number;
       is_approved: boolean;
     };
+  }>;
+  diagnostics?: Array<{
+    technical_report: string;
+    created_at: string;
+    mechanic_name?: string;
   }>;
   total_amount: number;
   validity_days?: number;
@@ -67,6 +73,36 @@ export async function generateBudgetPDF(data: BudgetData): Promise<void> {
     { label: 'Ano', value: data.vehicle.year?.toString() || '-' },
   ], y, 3);
   
+  // Initial complaint
+  if (data.initial_complaint) {
+    y = checkPageBreak(doc, y, 30);
+    y = addSectionTitle(doc, 'Reclamação Inicial', y);
+    doc.setFontSize(10);
+    doc.setTextColor(30, 41, 59);
+    const complaintLines = doc.splitTextToSize(data.initial_complaint, 180);
+    doc.text(complaintLines, 14, y);
+    y += (complaintLines.length * 5) + 5;
+  }
+
+  // Mechanic diagnosis
+  if (data.diagnostics && data.diagnostics.length > 0) {
+    y = checkPageBreak(doc, y, 40);
+    y = addSectionTitle(doc, 'Diagnóstico do Mecânico', y);
+    
+    data.diagnostics.forEach((diag) => {
+      y = checkPageBreak(doc, y, 25);
+      doc.setFontSize(9);
+      doc.setTextColor(100, 116, 139);
+      doc.text(diag.mechanic_name || '', 14, y);
+      y += 5;
+      doc.setFontSize(10);
+      doc.setTextColor(30, 41, 59);
+      const reportLines = doc.splitTextToSize(diag.technical_report, 180);
+      doc.text(reportLines, 14, y);
+      y += (reportLines.length * 5) + 8;
+    });
+  }
+
   // Services
   const services = data.items.filter(i => i.item_type === 'SERVICE');
   if (services.length > 0) {
