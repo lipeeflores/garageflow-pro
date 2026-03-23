@@ -49,6 +49,11 @@ interface WorkOrderData {
     color: string | null;
   } | null;
   items: BudgetItem[];
+  diagnostics?: Array<{
+    technical_report: string;
+    created_at: string;
+    mechanic_name?: string;
+  }>;
 }
 
 export default function OrcamentoPublico() {
