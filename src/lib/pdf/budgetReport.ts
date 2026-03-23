@@ -15,6 +15,7 @@ import {
 interface BudgetData {
   id: string;
   created_at: string;
+  initial_complaint?: string;
   customer: {
     full_name: string;
     phone_number: string;
@@ -35,6 +36,11 @@ interface BudgetData {
       total_price: number;
       is_approved: boolean;
     };
+  }>;
+  diagnostics?: Array<{
+    technical_report: string;
+    created_at: string;
+    mechanic_name?: string;
   }>;
   total_amount: number;
   validity_days?: number;
