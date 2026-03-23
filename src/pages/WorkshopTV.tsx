@@ -195,7 +195,7 @@ function TodayAgenda() {
     a.status === "AGENDADO" || a.status === "CHEGOU"
   ) || [];
   const missedAppointments = data?.missed || [];
-  const allItems = [...missedAppointments, ...todayAppointments].slice(0, 6);
+  const allItems = [...todayAppointments, ...missedAppointments].slice(0, 6);
 
   if (isLoading) {
     return <div className="animate-pulse text-muted-foreground text-sm">Carregando...</div>;
