@@ -246,6 +246,7 @@ export function CreateUserDialog() {
                     </FormControl>
                     <SelectContent>
                       <SelectItem value="MECHANIC">Mecânico</SelectItem>
+                      <SelectItem value="PATIO">PC do Pátio</SelectItem>
                       <SelectItem value="MANAGER">Gerente</SelectItem>
                       <SelectItem value="ADMIN">Administrador</SelectItem>
                     </SelectContent>
