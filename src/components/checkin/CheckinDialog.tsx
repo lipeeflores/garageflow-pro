@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -134,6 +134,10 @@ export function CheckinDialog({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [currentUpload, setCurrentUpload] = useState<string | null>(null);
+  const [cameraPosition, setCameraPosition] = useState<string | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   
   const { toast } = useToast();
   const { profile, user } = useAuth();
@@ -169,6 +173,72 @@ export function CheckinDialog({
 
   const photosCount = Object.values(photos).filter(Boolean).length;
   const allPhotosUploaded = photosCount === 4;
+
+  const stopCamera = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+    setCameraPosition(null);
+  }, []);
+
+  const startCameraForPosition = useCallback(async (position: string) => {
+    try {
+      setCameraPosition(position);
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: "environment",
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          },
+        });
+      } catch {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      }
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        streamRef.current = stream;
+        await videoRef.current.play();
+      }
+    } catch (error) {
+      console.error("Camera access error:", error);
+      stopCamera();
+      toast({
+        title: "Erro ao abrir câmera",
+        description: "Não foi possível acessar a câmera. Verifique as permissões do navegador.",
+        variant: "destructive",
+      });
+    }
+  }, [stopCamera, toast]);
+
+  const captureCameraPhoto = useCallback(() => {
+    if (!cameraPosition || !videoRef.current || !canvasRef.current) return;
+
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
+    const context = canvas.getContext("2d");
+    if (!context) return;
+
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+
+      const capturedFile = new File([blob], `${cameraPosition}-${Date.now()}.jpg`, {
+        type: "image/jpeg",
+      });
+      handlePhotoChange(cameraPosition, capturedFile);
+      stopCamera();
+    }, "image/jpeg", 0.85);
+  }, [cameraPosition, handlePhotoChange, stopCamera]);
 
   const uploadPhoto = async (file: File, position: string): Promise<string> => {
     setCurrentUpload(position);
@@ -310,7 +380,8 @@ export function CheckinDialog({
     setPhotoPreviews({});
     setUploadProgress(0);
     setCurrentUpload(null);
-  }, [form]);
+    stopCamera();
+  }, [form, stopCamera]);
 
   return (
     <Dialog open={open} onOpenChange={(newOpen) => {
@@ -389,26 +460,81 @@ export function CheckinDialog({
                         )}
                       </div>
                     ) : (
-                      <label
-                        htmlFor={inputId}
+                      <div
                         className={cn(
-                          "w-full aspect-video rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-1 transition-all",
-                          "hover:border-accent hover:bg-accent/5 hover:scale-[1.02]",
+                          "w-full aspect-video rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-1 p-2 transition-all",
+                          "hover:border-accent hover:bg-accent/5",
                           "border-muted-foreground/30 bg-muted/20"
                         )}
                       >
                         <span className="text-2xl">{pos.icon}</span>
                         <span className="text-sm font-semibold">{pos.label}</span>
-                        <span className="text-[10px] text-muted-foreground">{pos.description}</span>
-                        <div className="flex items-center gap-1 mt-1 text-xs text-accent">
-                          <Camera className="h-3 w-3" />
-                          <span>Tirar foto</span>
+                        <span className="text-[10px] text-muted-foreground text-center">{pos.description}</span>
+
+                        <div className="mt-2 grid w-full grid-cols-2 gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-8 gap-1 text-xs"
+                            onClick={() => startCameraForPosition(pos.id)}
+                          >
+                            <Camera className="h-3 w-3" />
+                            Câmera
+                          </Button>
+
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-8 gap-1 text-xs"
+                            onClick={() => document.getElementById(inputId)?.click()}
+                          >
+                            <ImagePlus className="h-3 w-3" />
+                            Galeria
+                          </Button>
                         </div>
-                      </label>
+                      </div>
                     )}
                   </div>
                 )})}
               </div>
+
+              <canvas ref={canvasRef} className="hidden" />
+
+              <Dialog open={!!cameraPosition} onOpenChange={(isOpen) => !isOpen && stopCamera()}>
+                <DialogContent className="sm:max-w-md">
+                  <DialogHeader>
+                    <DialogTitle className="font-display flex items-center gap-2">
+                      <Camera className="h-4 w-4" />
+                      Capturar foto: {photoPositions.find((p) => p.id === cameraPosition)?.label || "Veículo"}
+                    </DialogTitle>
+                    <DialogDescription>
+                      Posicione o veículo corretamente e clique em capturar.
+                    </DialogDescription>
+                  </DialogHeader>
+
+                  <div className="relative aspect-video bg-black rounded-lg overflow-hidden">
+                    <video
+                      ref={videoRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+
+                  <DialogFooter className="gap-2 sm:justify-end">
+                    <Button type="button" variant="outline" onClick={stopCamera}>
+                      Cancelar
+                    </Button>
+                    <Button type="button" onClick={captureCameraPhoto} className="gap-2">
+                      <Camera className="h-4 w-4" />
+                      Capturar
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
               
               {!allPhotosUploaded && (
                 <p className="text-sm text-amber-600 bg-amber-50 dark:bg-amber-950/30 px-3 py-2 rounded-lg flex items-center gap-2">
