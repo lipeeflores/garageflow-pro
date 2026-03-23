@@ -168,7 +168,8 @@ function SidebarContent({
               </p>
               <p className="truncate text-xs text-sidebar-foreground/60">
                 {userRole?.role === 'ADMIN' ? 'Administrador' : 
-                 userRole?.role === 'MANAGER' ? 'Gerente' : 'Mecânico'}
+                 userRole?.role === 'MANAGER' ? 'Gerente' : 
+                 userRole?.role === 'PATIO' ? 'PC do Pátio' : 'Mecânico'}
               </p>
             </div>
           )}
