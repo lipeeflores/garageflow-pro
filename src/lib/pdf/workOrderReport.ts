@@ -1,6 +1,6 @@
 import { 
   createPDF, 
-  addHeader, 
+  addHeaderWithLogo,
   addFooter, 
   addSectionTitle, 
   addInfoGrid, 
@@ -93,11 +93,11 @@ const fuelLevelLabels: Record<string, string> = {
   COMPLETO: 'Completo',
 };
 
-export function generateWorkOrderPDF(data: WorkOrderData): void {
+export async function generateWorkOrderPDF(data: WorkOrderData): Promise<void> {
   const doc = createPDF();
   
-  // Header
-  let y = addHeader(
+  // Header with logo
+  let y = await addHeaderWithLogo(
     doc, 
     'Ordem de Serviço',
     `OS #${data.id.slice(0, 8).toUpperCase()}`
@@ -180,7 +180,7 @@ export function generateWorkOrderPDF(data: WorkOrderData): void {
     y = checkPageBreak(doc, y, 40);
     y = addSectionTitle(doc, 'Diagnóstico Técnico', y);
     
-    data.diagnostics.forEach((diag, index) => {
+    data.diagnostics.forEach((diag) => {
       y = checkPageBreak(doc, y, 25);
       
       doc.setFontSize(9);

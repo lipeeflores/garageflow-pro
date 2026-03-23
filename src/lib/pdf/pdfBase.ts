@@ -2,6 +2,7 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import logoImg from '@/assets/logo.png';
 
 // Extend jsPDF with autoTable
 declare module 'jspdf' {
@@ -36,7 +37,30 @@ const COLORS = {
   warning: [245, 158, 11] as [number, number, number],
   error: [239, 68, 68] as [number, number, number],
   white: [255, 255, 255] as [number, number, number],
+  brand: [180, 30, 30] as [number, number, number], // MA red
 };
+
+// Cache for logo image
+let cachedLogoData: string | null = null;
+
+async function loadLogoAsBase64(): Promise<string | null> {
+  if (cachedLogoData) return cachedLogoData;
+  try {
+    const response = await fetch(logoImg);
+    const blob = await response.blob();
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        cachedLogoData = reader.result as string;
+        resolve(cachedLogoData);
+      };
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+}
 
 export function createPDF(orientation: 'portrait' | 'landscape' = 'portrait'): jsPDF {
   return new jsPDF({
@@ -46,17 +70,79 @@ export function createPDF(orientation: 'portrait' | 'landscape' = 'portrait'): j
   });
 }
 
+export async function addHeaderWithLogo(
+  doc: jsPDF,
+  title: string,
+  subtitle?: string,
+): Promise<number> {
+  const pageWidth = doc.internal.pageSize.width;
+  
+  // Try to add logo
+  const logoData = await loadLogoAsBase64();
+  let logoEndX = 14;
+  
+  if (logoData) {
+    try {
+      doc.addImage(logoData, 'PNG', 14, 8, 25, 15);
+      logoEndX = 42;
+    } catch {
+      // Logo failed, continue without
+    }
+  }
+  
+  // Company name
+  doc.setFontSize(14);
+  doc.setTextColor(...COLORS.brand);
+  doc.setFont('helvetica', 'bold');
+  doc.text('MA Mecânica Multimarcas', logoEndX, 16);
+  
+  // Company info
+  doc.setFontSize(8);
+  doc.setTextColor(...COLORS.muted);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Tel: (47) 9 8866-8001 • Blumenau/SC', logoEndX, 21);
+  
+  // Horizontal line
+  doc.setDrawColor(...COLORS.primary);
+  doc.setLineWidth(0.5);
+  doc.line(14, 27, pageWidth - 14, 27);
+  
+  // Report title
+  doc.setFontSize(16);
+  doc.setTextColor(...COLORS.text);
+  doc.setFont('helvetica', 'bold');
+  doc.text(title, 14, 37);
+  
+  let currentY = 42;
+  
+  if (subtitle) {
+    doc.setFontSize(10);
+    doc.setTextColor(...COLORS.muted);
+    doc.setFont('helvetica', 'normal');
+    doc.text(subtitle, 14, currentY);
+    currentY += 5;
+  }
+  
+  // Generation date
+  doc.setFontSize(8);
+  doc.setTextColor(...COLORS.muted);
+  const dateText = `Gerado em: ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`;
+  doc.text(dateText, pageWidth - 14 - doc.getTextWidth(dateText), 37);
+  
+  return currentY + 5;
+}
+
 export function addHeader(
   doc: jsPDF, 
   title: string, 
   subtitle?: string,
-  companyName: string = 'Garage Box Pro'
+  companyName: string = 'MA Mecânica Multimarcas'
 ): number {
   const pageWidth = doc.internal.pageSize.width;
   
   // Company name
   doc.setFontSize(20);
-  doc.setTextColor(...COLORS.primary);
+  doc.setTextColor(...COLORS.brand);
   doc.setFont('helvetica', 'bold');
   doc.text(companyName, 14, 20);
   
@@ -101,7 +187,7 @@ export function addFooter(doc: jsPDF, pageNumber?: number): void {
   // Footer text
   doc.setFontSize(8);
   doc.setTextColor(...COLORS.muted);
-  doc.text('Garage Box Pro - Sistema de Gestão para Oficinas', 14, pageHeight - 10);
+  doc.text('MA Mecânica Multimarcas • Tel: (47) 9 8866-8001 • Blumenau/SC', 14, pageHeight - 10);
   
   if (pageNumber !== undefined) {
     const pageText = `Página ${pageNumber}`;
