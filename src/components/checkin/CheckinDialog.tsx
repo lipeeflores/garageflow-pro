@@ -1,8 +1,8 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Camera, Upload, X, Fuel, Gauge, Check, Loader2, ImagePlus } from "lucide-react";
+import { Camera, X, Fuel, Gauge, Check, Loader2, ImagePlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -57,7 +57,6 @@ const formSchema = z.object({
   km_current: z.coerce.number().min(0, "KM deve ser maior que 0"),
   fuel_level: z.enum(["RESERVA", "QUARTO", "METADE", "TRES_QUARTOS", "COMPLETO"]),
   observations: z.string().optional(),
-  customer_items: z.string().optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -135,7 +134,6 @@ export function CheckinDialog({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [currentUpload, setCurrentUpload] = useState<string | null>(null);
-  const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   
   const { toast } = useToast();
   const { profile, user } = useAuth();
@@ -148,7 +146,6 @@ export function CheckinDialog({
       km_current: 0,
       fuel_level: "METADE",
       observations: "",
-      customer_items: "",
     },
   });
 
@@ -169,10 +166,6 @@ export function CheckinDialog({
       });
     }
   }, []);
-
-  const triggerFileInput = (position: string) => {
-    fileInputRefs.current[position]?.click();
-  };
 
   const photosCount = Object.values(photos).filter(Boolean).length;
   const allPhotosUploaded = photosCount === 4;
@@ -240,14 +233,15 @@ export function CheckinDialog({
       // Create check-in record
       const { error: checkinError } = await supabase
         .from('work_order_checkins')
-        .insert({
+        .upsert({
           work_order_id: workOrderId,
           tenant_id: profile.tenant_id,
           km_current: data.km_current,
           fuel_level: data.fuel_level,
           observations: data.observations || null,
-          customer_items: data.customer_items || null,
           mechanic_id: user?.id,
+        }, {
+          onConflict: 'work_order_id',
         });
 
       if (checkinError) throw checkinError;
@@ -256,7 +250,7 @@ export function CheckinDialog({
 
       // Create attachment records for photos
       for (const [position, url] of Object.entries(photoUrls)) {
-        await supabase
+        const { error: attachmentError } = await supabase
           .from('attachments')
           .insert({
             tenant_id: profile.tenant_id,
@@ -267,6 +261,8 @@ export function CheckinDialog({
             file_name: `checkin-${position}.jpg`,
             uploaded_by: user?.id,
           });
+
+        if (attachmentError) throw attachmentError;
       }
 
       setUploadProgress(90);
@@ -276,6 +272,7 @@ export function CheckinDialog({
         id: workOrderId,
         updates: {
           workflow_step: 'CHECKIN_CONCLUIDO',
+          current_mechanic_id: user?.id,
         },
       });
 
@@ -351,14 +348,17 @@ export function CheckinDialog({
               </div>
               
               <div className="grid grid-cols-2 gap-3">
-                {photoPositions.map((pos) => (
+                {photoPositions.map((pos) => {
+                  const inputId = `checkin-photo-${pos.id}`;
+
+                  return (
                   <div key={pos.id} className="relative">
                     <input
-                      ref={el => fileInputRefs.current[pos.id] = el}
+                      id={inputId}
                       type="file"
-                      accept="image/*"
+                      accept="image/*;capture=camera"
                       capture="environment"
-                      className="hidden"
+                      className="sr-only"
                       onChange={(e) => handlePhotoChange(pos.id, e.target.files?.[0] || null)}
                     />
                     
@@ -390,9 +390,8 @@ export function CheckinDialog({
                         )}
                       </div>
                     ) : (
-                      <button
-                        type="button"
-                        onClick={() => triggerFileInput(pos.id)}
+                      <label
+                        htmlFor={inputId}
                         className={cn(
                           "w-full aspect-video rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-1 transition-all",
                           "hover:border-accent hover:bg-accent/5 hover:scale-[1.02]",
@@ -406,10 +405,10 @@ export function CheckinDialog({
                           <Camera className="h-3 w-3" />
                           <span>Tirar foto</span>
                         </div>
-                      </button>
+                      </label>
                     )}
                   </div>
-                ))}
+                )})}
               </div>
               
               {!allPhotosUploaded && (
@@ -485,25 +484,6 @@ export function CheckinDialog({
                 )}
               />
             </div>
-
-            {/* Customer Items */}
-            <FormField
-              control={form.control}
-              name="customer_items"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Itens do Cliente no Veículo</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Ex: Documentos no porta-luvas, bolsa no banco traseiro, chave reserva..."
-                      className="min-h-[80px]"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
 
             {/* Observations */}
             <FormField
