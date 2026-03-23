@@ -50,7 +50,7 @@ const userFormSchema = z.object({
   email: z.string().email("Email inválido"),
   full_name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
   phone: z.string().optional(),
-  role: z.enum(["ADMIN", "MANAGER", "MECHANIC"]),
+  role: z.enum(["ADMIN", "MANAGER", "MECHANIC", "PATIO"]),
   password: z.string().min(6, "Senha deve ter pelo menos 6 caracteres").optional(),
 });
 
