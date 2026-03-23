@@ -19,8 +19,8 @@ interface KanbanCardProps {
 }
 
 const actionConfig: Record<WorkflowStep, { label: string; action: 'checkin' | 'navigate' | 'update'; nextStep?: WorkflowStep } | null> = {
-  AGUARDANDO_CHECKIN: { label: "Pegar Serviço", action: 'checkin' },
-  CHECKIN_CONCLUIDO: { label: "Diagnóstico", action: 'navigate' },
+  AGUARDANDO_CHECKIN: { label: "Check-in", action: 'checkin' },
+  CHECKIN_CONCLUIDO: { label: "Pegar Serviço", action: 'navigate' },
   EM_DIAGNOSTICO: { label: "Diagnóstico", action: 'navigate' },
   AGUARDANDO_ORCAMENTO: { label: "Orçamento", action: 'navigate' },
   AGUARDANDO_APROVACAO: null,
