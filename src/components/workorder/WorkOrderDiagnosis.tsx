@@ -39,6 +39,7 @@ import {
 import { useUpdateWorkOrder } from "@/hooks/useWorkOrders";
 import { AudioRecorder } from "./AudioRecorder";
 import { PhotoUpload } from "./PhotoUpload";
+import { DiagnosisItemsList } from "./DiagnosisItemsList";
 import type { WorkflowStep } from "@/hooks/useWorkOrders";
 
 const diagnosisSchema = z.object({
