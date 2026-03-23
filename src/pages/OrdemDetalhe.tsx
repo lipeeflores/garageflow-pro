@@ -467,15 +467,22 @@ export default function OrdemDetalhe() {
                   </Button>
                 )}
 
-                {/* Send to Quality */}
+                {/* Send to Quality - requires all checklist items checked */}
                 {workOrder.workflow_step === "EM_EXECUCAO" && canEdit && (
-                  <Button 
-                    className="w-full gap-2"
-                    onClick={() => handleWorkflowAction("EM_QUALIDADE")}
-                    disabled={updateWorkOrder.isPending}
-                  >
-                    Enviar p/ Qualidade
-                  </Button>
+                  <div className="space-y-1">
+                    <Button 
+                      className="w-full gap-2"
+                      onClick={() => handleWorkflowAction("EM_QUALIDADE")}
+                      disabled={updateWorkOrder.isPending || !allChecklistDone}
+                    >
+                      Enviar p/ Qualidade
+                    </Button>
+                    {!allChecklistDone && (
+                      <p className="text-xs text-muted-foreground text-center">
+                        Complete todos os itens do checklist antes de enviar.
+                      </p>
+                    )}
+                  </div>
                 )}
 
                 {/* Quality Actions - ADMIN only */}
