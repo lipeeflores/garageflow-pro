@@ -70,8 +70,13 @@ interface OSQueueProps {
 }
 
 function OSQueue({ highlightedOS }: OSQueueProps) {
+  const allSteps: WorkflowStep[] = [
+    "AGUARDANDO_CHECKIN", "CHECKIN_CONCLUIDO", "EM_DIAGNOSTICO", 
+    "AGUARDANDO_ORCAMENTO", "AGUARDANDO_APROVACAO", "APROVADO",
+    "EM_EXECUCAO", "AJUSTES", "EM_QUALIDADE", "PRONTO_PARA_RETIRADA"
+  ];
   const { data: workOrders, isLoading } = useWorkOrders({
-    workflow_step: workflowColumns.map(c => c.id),
+    workflow_step: allSteps,
   });
 
   const getOrdersByStep = (step: WorkflowStep) => {
