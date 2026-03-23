@@ -302,6 +302,26 @@ export default function OrdemDetalhe() {
               </Card>
             )}
 
+            {/* Execution Checklist - shown during EM_EXECUCAO, EM_QUALIDADE, AJUSTES */}
+            {['EM_EXECUCAO', 'AJUSTES'].includes(workOrder.workflow_step) && (
+              <ExecutionChecklist
+                workOrderId={workOrder.id}
+                vehiclePlate={workOrder.vehicle?.plate}
+                vehicleInfo={`${workOrder.vehicle?.make} ${workOrder.vehicle?.model}`}
+                onAllChecked={handleChecklistStatus}
+              />
+            )}
+
+            {/* Read-only checklist for Quality Control */}
+            {workOrder.workflow_step === 'EM_QUALIDADE' && (
+              <ExecutionChecklist
+                workOrderId={workOrder.id}
+                vehiclePlate={workOrder.vehicle?.plate}
+                vehicleInfo={`${workOrder.vehicle?.make} ${workOrder.vehicle?.model}`}
+                readOnly
+              />
+            )}
+
             {/* Tabs */}
             <Tabs defaultValue="diagnosis" className="w-full">
               <TabsList className={cn("w-full grid h-auto", showBudgetTab ? "grid-cols-3" : "grid-cols-2")}>
@@ -333,7 +353,8 @@ export default function OrdemDetalhe() {
                 <TabsContent value="budget" className="mt-4">
                   <WorkOrderBudget 
                     workOrderId={workOrder.id}
-                    canEdit={canEdit}
+                    canEdit={canEdit && isAdminOrManager}
+                    currentStep={workOrder.workflow_step}
                   />
                 </TabsContent>
               )}
