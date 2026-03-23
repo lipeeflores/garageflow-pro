@@ -87,8 +87,8 @@ export function useTodayAndMissedAppointments() {
 
   return useQuery<{ today: Appointment[]; missed: Appointment[] }>({
     queryKey: ['appointments', 'today-and-missed', todayKey],
-    queryFn: async () => {
-      if (!profile?.tenant_id) return [];
+    queryFn: async (): Promise<{ today: Appointment[]; missed: Appointment[] }> => {
+      if (!profile?.tenant_id) return { today: [], missed: [] };
 
       const today = new Date();
       const startOfDay = new Date(today);
