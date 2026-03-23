@@ -122,7 +122,7 @@ export function WorkOrderBudget({ workOrderId, canEdit }: WorkOrderBudgetProps) 
   return (
     <div className="space-y-4">
       {/* Add item button */}
-      {canEdit && isAdminOrManager && !showForm && (
+      {canEdit && !showForm && (
         <Button 
           onClick={() => setShowForm(true)}
           className="w-full gap-2"
