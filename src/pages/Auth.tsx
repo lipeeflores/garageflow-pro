@@ -92,57 +92,6 @@ export default function Auth() {
     }
   };
 
-  const handleSignup = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-
-    try {
-      const validation = signupSchema.safeParse({
-        fullName: signupFullName,
-        email: signupEmail,
-        password: signupPassword,
-        confirmPassword: signupConfirmPassword,
-      });
-
-      if (!validation.success) {
-        toast({
-          title: "Erro de validação",
-          description: validation.error.errors[0].message,
-          variant: "destructive",
-        });
-        setIsLoading(false);
-        return;
-      }
-
-      const { error } = await signUp(signupEmail, signupPassword, signupFullName);
-
-      if (error) {
-        let message = "Erro ao criar conta";
-        if (error.message.includes("User already registered")) {
-          message = "Este email já está cadastrado";
-        }
-        
-        toast({
-          title: "Erro",
-          description: message,
-          variant: "destructive",
-        });
-      } else {
-        toast({
-          title: "Conta criada!",
-          description: "Verifique seu email para confirmar o cadastro",
-        });
-      }
-    } catch (err) {
-      toast({
-        title: "Erro",
-        description: "Ocorreu um erro inesperado",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   if (loading) {
     return (
