@@ -35,7 +35,6 @@ Deno.serve(async (req) => {
 
     // Handle approval/rejection action
     if (action === "approve" || action === "reject") {
-      // First check current status
       const { data: wo } = await supabase
         .from("work_orders")
         .select("workflow_step")
@@ -70,15 +69,9 @@ Deno.serve(async (req) => {
         initial_complaint,
         workflow_step,
         created_at,
+        total_amount,
         customer:customers(full_name, phone_number),
-        vehicle:vehicles(plate, make, model, year, color),
-        items:work_order_items(
-          id, 
-          description, 
-          item_type, 
-          quantity,
-          pricing:work_order_pricing(unit_price, total_price)
-        )
+        vehicle:vehicles(plate, make, model, year, color)
       `)
       .eq("id", id)
       .single();
@@ -90,7 +83,37 @@ Deno.serve(async (req) => {
       });
     }
 
-    return new Response(JSON.stringify(data), {
+    // Fetch items separately to join with pricing
+    const { data: items } = await supabase
+      .from("work_order_items")
+      .select("id, description, item_type, quantity")
+      .eq("work_order_id", id);
+
+    // Fetch pricing for all items
+    const itemIds = (items || []).map((i: any) => i.id);
+    let pricingMap: Record<string, any> = {};
+    
+    if (itemIds.length > 0) {
+      const { data: pricing } = await supabase
+        .from("work_order_pricing")
+        .select("work_order_item_id, unit_price, total_price")
+        .in("work_order_item_id", itemIds);
+      
+      (pricing || []).forEach((p: any) => {
+        pricingMap[p.work_order_item_id] = {
+          unit_price: p.unit_price,
+          total_price: p.total_price,
+        };
+      });
+    }
+
+    // Combine items with pricing
+    const itemsWithPricing = (items || []).map((item: any) => ({
+      ...item,
+      pricing: pricingMap[item.id] ? [pricingMap[item.id]] : [],
+    }));
+
+    return new Response(JSON.stringify({ ...data, items: itemsWithPricing }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
