@@ -75,6 +75,15 @@ function OSQueue({ highlightedOS }: OSQueueProps) {
   });
 
   const getOrdersByStep = (step: WorkflowStep) => {
+    if (step === "AGUARDANDO_CHECKIN") {
+      return workOrders?.filter(wo => wo.workflow_step === "AGUARDANDO_CHECKIN" || wo.workflow_step === "CHECKIN_CONCLUIDO") || [];
+    }
+    if (step === "AGUARDANDO_APROVACAO") {
+      return workOrders?.filter(wo => wo.workflow_step === "AGUARDANDO_ORCAMENTO" || wo.workflow_step === "AGUARDANDO_APROVACAO") || [];
+    }
+    if (step === "EM_EXECUCAO") {
+      return workOrders?.filter(wo => wo.workflow_step === "APROVADO" || wo.workflow_step === "EM_EXECUCAO" || wo.workflow_step === "AJUSTES") || [];
+    }
     return workOrders?.filter(wo => wo.workflow_step === step) || [];
   };
 
