@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar } from "@/components/ui/calendar";
+import { BillsPanel } from "@/components/financeiro/BillsPanel";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   DollarSign,
