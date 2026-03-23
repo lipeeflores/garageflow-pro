@@ -58,9 +58,10 @@ type ItemFormData = z.infer<typeof itemSchema>;
 interface WorkOrderBudgetProps {
   workOrderId: string;
   canEdit: boolean;
+  currentStep?: string;
 }
 
-export function WorkOrderBudget({ workOrderId, canEdit }: WorkOrderBudgetProps) {
+export function WorkOrderBudget({ workOrderId, canEdit, currentStep }: WorkOrderBudgetProps) {
   const [showForm, setShowForm] = useState(false);
   const { isAdminOrManager } = useAuth();
   

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -36,6 +36,7 @@ import {
   ShareBudgetButton,
   PaymentDialog,
   ReturnWorkOrderDialog,
+  ExecutionChecklist,
 } from "@/components/workorder";
 import { MechanicPickerDialog } from "@/components/workorder/MechanicPickerDialog";
 import { CheckinDialog } from "@/components/checkin";
@@ -87,7 +88,11 @@ export default function OrdemDetalhe() {
   const updateWorkOrder = useUpdateWorkOrder();
   const { exportWorkOrderPDF, exportBudgetPDF } = usePDFExport();
   const [mechanicPickerOpen, setMechanicPickerOpen] = useState(false);
+  const [allChecklistDone, setAllChecklistDone] = useState(false);
 
+  const handleChecklistStatus = useCallback((allChecked: boolean) => {
+    setAllChecklistDone(allChecked);
+  }, []);
   const canEdit = isAdminOrManager || 
     (workOrder?.current_mechanic_id === user?.id);
 
@@ -297,6 +302,26 @@ export default function OrdemDetalhe() {
               </Card>
             )}
 
+            {/* Execution Checklist - shown during EM_EXECUCAO, EM_QUALIDADE, AJUSTES */}
+            {['EM_EXECUCAO', 'AJUSTES'].includes(workOrder.workflow_step) && (
+              <ExecutionChecklist
+                workOrderId={workOrder.id}
+                vehiclePlate={workOrder.vehicle?.plate}
+                vehicleInfo={`${workOrder.vehicle?.make} ${workOrder.vehicle?.model}`}
+                onAllChecked={handleChecklistStatus}
+              />
+            )}
+
+            {/* Read-only checklist for Quality Control */}
+            {workOrder.workflow_step === 'EM_QUALIDADE' && (
+              <ExecutionChecklist
+                workOrderId={workOrder.id}
+                vehiclePlate={workOrder.vehicle?.plate}
+                vehicleInfo={`${workOrder.vehicle?.make} ${workOrder.vehicle?.model}`}
+                readOnly
+              />
+            )}
+
             {/* Tabs */}
             <Tabs defaultValue="diagnosis" className="w-full">
               <TabsList className={cn("w-full grid h-auto", showBudgetTab ? "grid-cols-3" : "grid-cols-2")}>
@@ -328,7 +353,8 @@ export default function OrdemDetalhe() {
                 <TabsContent value="budget" className="mt-4">
                   <WorkOrderBudget 
                     workOrderId={workOrder.id}
-                    canEdit={canEdit}
+                    canEdit={canEdit && isAdminOrManager}
+                    currentStep={workOrder.workflow_step}
                   />
                 </TabsContent>
               )}
@@ -441,15 +467,22 @@ export default function OrdemDetalhe() {
                   </Button>
                 )}
 
-                {/* Send to Quality */}
+                {/* Send to Quality - requires all checklist items checked */}
                 {workOrder.workflow_step === "EM_EXECUCAO" && canEdit && (
-                  <Button 
-                    className="w-full gap-2"
-                    onClick={() => handleWorkflowAction("EM_QUALIDADE")}
-                    disabled={updateWorkOrder.isPending}
-                  >
-                    Enviar p/ Qualidade
-                  </Button>
+                  <div className="space-y-1">
+                    <Button 
+                      className="w-full gap-2"
+                      onClick={() => handleWorkflowAction("EM_QUALIDADE")}
+                      disabled={updateWorkOrder.isPending || !allChecklistDone}
+                    >
+                      Enviar p/ Qualidade
+                    </Button>
+                    {!allChecklistDone && (
+                      <p className="text-xs text-muted-foreground text-center">
+                        Complete todos os itens do checklist antes de enviar.
+                      </p>
+                    )}
+                  </div>
                 )}
 
                 {/* Quality Actions - ADMIN only */}

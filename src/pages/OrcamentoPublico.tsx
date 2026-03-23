@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import logoImg from "@/assets/logo.png";
 
 interface BudgetItem {
   id: string;
@@ -35,6 +36,7 @@ interface WorkOrderData {
   initial_complaint: string | null;
   workflow_step: string;
   created_at: string;
+  total_amount: number | null;
   customer: {
     full_name: string;
     phone_number: string;
@@ -212,8 +214,15 @@ export default function OrcamentoPublico() {
   return (
     <div className="min-h-screen bg-muted/30 py-8 px-4">
       <div className="mx-auto max-w-2xl space-y-6">
+        {/* Header with logo */}
         <Card>
           <CardHeader className="text-center pb-4">
+            <div className="flex justify-center mb-3">
+              <img src={logoImg} alt="MA Mecânica Multimarcas" className="h-16 object-contain" />
+            </div>
+            <p className="text-sm text-muted-foreground font-medium">MA Mecânica Multimarcas</p>
+            <p className="text-xs text-muted-foreground">Tel: (47) 9 8866-8001 • Blumenau/SC</p>
+            <Separator className="my-3" />
             <CardTitle className="font-display text-2xl">Orçamento de Serviço</CardTitle>
             <CardDescription>
               OS-{workOrder.id.slice(0, 8).toUpperCase()} • Criada em{" "}
@@ -284,7 +293,7 @@ export default function OrcamentoPublico() {
                     <div key={item.id} className="flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2">
                       <span className="text-sm">{item.description}</span>
                       <span className="font-medium">
-                        {item.pricing?.total_price ? `R$ ${item.pricing.total_price.toFixed(2)}` : '-'}
+                        {item.pricing?.total_price ? `R$ ${Number(item.pricing.total_price).toFixed(2)}` : '-'}
                       </span>
                     </div>
                   ))}
@@ -312,7 +321,7 @@ export default function OrcamentoPublico() {
                         )}
                       </div>
                       <span className="font-medium">
-                        {item.pricing?.total_price ? `R$ ${item.pricing.total_price.toFixed(2)}` : '-'}
+                        {item.pricing?.total_price ? `R$ ${Number(item.pricing.total_price).toFixed(2)}` : '-'}
                       </span>
                     </div>
                   ))}

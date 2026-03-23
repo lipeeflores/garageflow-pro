@@ -1,6 +1,6 @@
 import { 
   createPDF, 
-  addHeader, 
+  addHeaderWithLogo,
   addFooter, 
   addSectionTitle, 
   addInfoGrid, 
@@ -41,11 +41,11 @@ interface BudgetData {
   notes?: string;
 }
 
-export function generateBudgetPDF(data: BudgetData): void {
+export async function generateBudgetPDF(data: BudgetData): Promise<void> {
   const doc = createPDF();
   
-  // Header
-  let y = addHeader(
+  // Header with logo
+  let y = await addHeaderWithLogo(
     doc, 
     'Orçamento',
     `Ref: #${data.id.slice(0, 8).toUpperCase()}`
@@ -95,7 +95,6 @@ export function generateBudgetPDF(data: BudgetData): void {
       }
     );
     
-    // Services subtotal
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(100, 116, 139);
@@ -132,7 +131,6 @@ export function generateBudgetPDF(data: BudgetData): void {
       }
     );
     
-    // Parts subtotal
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(100, 116, 139);
@@ -150,7 +148,6 @@ export function generateBudgetPDF(data: BudgetData): void {
   y = checkPageBreak(doc, y, 40);
   y += 10;
   
-  // Validity info
   doc.setFontSize(9);
   doc.setTextColor(100, 116, 139);
   doc.text(`Data de Emissão: ${formatDate(data.created_at)}`, 14, y);
@@ -170,7 +167,7 @@ export function generateBudgetPDF(data: BudgetData): void {
     '• Garantia de 90 dias para serviços e conforme fabricante para peças.',
   ];
   
-  terms.forEach((term, index) => {
+  terms.forEach((term) => {
     const lines = doc.splitTextToSize(term, 180);
     doc.text(lines, 14, y);
     y += (lines.length * 4) + 2;
@@ -197,7 +194,6 @@ export function generateBudgetPDF(data: BudgetData): void {
   doc.setDrawColor(200, 200, 200);
   doc.setLineWidth(0.5);
   
-  // Approval box
   doc.rect(14, y, doc.internal.pageSize.width - 28, 35);
   
   y += 8;
