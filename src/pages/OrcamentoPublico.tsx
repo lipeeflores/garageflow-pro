@@ -69,41 +69,19 @@ export default function OrcamentoPublico() {
       }
 
       try {
-        // Simple token validation: token should match first 8 chars of work order ID
-        const expectedToken = id.slice(0, 8).toUpperCase();
-        if (token.toUpperCase() !== expectedToken) {
+        const { data, error } = await supabase.functions.invoke('get-public-budget', {
+          body: { id, token },
+        });
+
+        if (error || data?.error) {
+          console.error('Error fetching budget:', error || data?.error);
           setLoading(false);
           return;
         }
 
-        const { data, error } = await supabase
-          .from('work_orders')
-          .select(`
-            id,
-            initial_complaint,
-            workflow_step,
-            created_at,
-            customer:customers(full_name, phone_number),
-            vehicle:vehicles(plate, make, model, year, color),
-            items:work_order_items(
-              id, 
-              description, 
-              item_type, 
-              quantity,
-              pricing:work_order_pricing(unit_price, total_price)
-            )
-          `)
-          .eq('id', id)
-          .single();
-
-        if (error) throw error;
-
         // Check if already approved/rejected
         if (data.workflow_step !== 'AGUARDANDO_APROVACAO') {
-          if (data.workflow_step === 'APROVADO' || 
-              data.workflow_step === 'EM_EXECUCAO' ||
-              data.workflow_step === 'PRONTO_PARA_RETIRADA' ||
-              data.workflow_step === 'FINALIZADO') {
+          if (['APROVADO', 'EM_EXECUCAO', 'PRONTO_PARA_RETIRADA', 'FINALIZADO'].includes(data.workflow_step)) {
             setDecision('approved');
             setSubmitted(true);
           } else if (data.workflow_step === 'CANCELADO') {
@@ -112,16 +90,13 @@ export default function OrcamentoPublico() {
           }
         }
 
-        // Transform the data to match our interface
-        const transformedItems = data.items.map((item: any) => ({
+        // Transform items
+        const transformedItems = (data.items || []).map((item: any) => ({
           ...item,
           pricing: item.pricing?.[0] || null
         }));
 
-        setWorkOrder({
-          ...data,
-          items: transformedItems
-        } as WorkOrderData);
+        setWorkOrder({ ...data, items: transformedItems } as WorkOrderData);
       } catch (error) {
         console.error('Error fetching work order:', error);
       } finally {
@@ -133,18 +108,15 @@ export default function OrcamentoPublico() {
   }, [id, token]);
 
   const handleDecision = async (approve: boolean) => {
-    if (!id || submitting) return;
+    if (!id || !token || submitting) return;
 
     setSubmitting(true);
     try {
-      const newStep = approve ? 'APROVADO' : 'CANCELADO';
-      
-      const { error } = await supabase
-        .from('work_orders')
-        .update({ workflow_step: newStep })
-        .eq('id', id);
+      const { data, error } = await supabase.functions.invoke('get-public-budget', {
+        body: { id, token, action: approve ? 'approve' : 'reject' },
+      });
 
-      if (error) throw error;
+      if (error || data?.error) throw new Error(data?.error || 'Failed');
 
       setDecision(approve ? 'approved' : 'rejected');
       setSubmitted(true);
@@ -197,10 +169,8 @@ export default function OrcamentoPublico() {
     );
   }
 
-  // Calculate totals
   const services = workOrder.items.filter(i => i.item_type === 'SERVICE');
   const parts = workOrder.items.filter(i => i.item_type === 'PART');
-  
   const servicesTotal = services.reduce((sum, i) => sum + (i.pricing?.total_price || 0), 0);
   const partsTotal = parts.reduce((sum, i) => sum + (i.pricing?.total_price || 0), 0);
   const grandTotal = servicesTotal + partsTotal;
@@ -212,8 +182,8 @@ export default function OrcamentoPublico() {
           <CardContent className="flex flex-col items-center justify-center py-12">
             {decision === 'approved' ? (
               <>
-                <CheckCircle className="h-16 w-16 text-success" />
-                <h2 className="mt-4 font-display text-2xl font-bold text-success">
+                <CheckCircle className="h-16 w-16 text-green-500" />
+                <h2 className="mt-4 font-display text-2xl font-bold text-green-500">
                   Orçamento Aprovado!
                 </h2>
                 <p className="mt-2 text-center text-muted-foreground">
@@ -242,12 +212,9 @@ export default function OrcamentoPublico() {
   return (
     <div className="min-h-screen bg-muted/30 py-8 px-4">
       <div className="mx-auto max-w-2xl space-y-6">
-        {/* Header */}
         <Card>
           <CardHeader className="text-center pb-4">
-            <CardTitle className="font-display text-2xl">
-              Orçamento de Serviço
-            </CardTitle>
+            <CardTitle className="font-display text-2xl">Orçamento de Serviço</CardTitle>
             <CardDescription>
               OS-{workOrder.id.slice(0, 8).toUpperCase()} • Criada em{" "}
               {format(new Date(workOrder.created_at), "dd/MM/yyyy", { locale: ptBR })}
@@ -255,7 +222,6 @@ export default function OrcamentoPublico() {
           </CardHeader>
         </Card>
 
-        {/* Vehicle & Customer */}
         <div className="grid gap-4 sm:grid-cols-2">
           <Card>
             <CardContent className="pt-6">
@@ -264,9 +230,7 @@ export default function OrcamentoPublico() {
                   <Car className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <p className="font-display text-xl font-bold">
-                    {workOrder.vehicle?.plate}
-                  </p>
+                  <p className="font-display text-xl font-bold">{workOrder.vehicle?.plate}</p>
                   <p className="text-sm text-muted-foreground">
                     {workOrder.vehicle?.make} {workOrder.vehicle?.model}
                     {workOrder.vehicle?.year && ` (${workOrder.vehicle.year})`}
@@ -275,7 +239,6 @@ export default function OrcamentoPublico() {
               </div>
             </CardContent>
           </Card>
-
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center gap-3">
@@ -294,27 +257,22 @@ export default function OrcamentoPublico() {
           </Card>
         </div>
 
-        {/* Complaint */}
         {workOrder.initial_complaint && (
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-base">Reclamação Inicial</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground">
-                {workOrder.initial_complaint}
-              </p>
+              <p className="text-sm text-muted-foreground">{workOrder.initial_complaint}</p>
             </CardContent>
           </Card>
         )}
 
-        {/* Budget Items */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Itens do Orçamento</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Services */}
             {services.length > 0 && (
               <div>
                 <div className="flex items-center gap-2 mb-2">
@@ -323,15 +281,10 @@ export default function OrcamentoPublico() {
                 </div>
                 <div className="space-y-2">
                   {services.map((item) => (
-                    <div 
-                      key={item.id}
-                      className="flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2"
-                    >
+                    <div key={item.id} className="flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2">
                       <span className="text-sm">{item.description}</span>
                       <span className="font-medium">
-                        {item.pricing?.total_price 
-                          ? `R$ ${item.pricing.total_price.toFixed(2)}`
-                          : '-'}
+                        {item.pricing?.total_price ? `R$ ${item.pricing.total_price.toFixed(2)}` : '-'}
                       </span>
                     </div>
                   ))}
@@ -343,7 +296,6 @@ export default function OrcamentoPublico() {
               </div>
             )}
 
-            {/* Parts */}
             {parts.length > 0 && (
               <div>
                 <div className="flex items-center gap-2 mb-2">
@@ -352,22 +304,15 @@ export default function OrcamentoPublico() {
                 </div>
                 <div className="space-y-2">
                   {parts.map((item) => (
-                    <div 
-                      key={item.id}
-                      className="flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2"
-                    >
+                    <div key={item.id} className="flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2">
                       <div>
                         <span className="text-sm">{item.description}</span>
                         {item.quantity > 1 && (
-                          <Badge variant="secondary" className="ml-2">
-                            x{item.quantity}
-                          </Badge>
+                          <Badge variant="secondary" className="ml-2">x{item.quantity}</Badge>
                         )}
                       </div>
                       <span className="font-medium">
-                        {item.pricing?.total_price 
-                          ? `R$ ${item.pricing.total_price.toFixed(2)}`
-                          : '-'}
+                        {item.pricing?.total_price ? `R$ ${item.pricing.total_price.toFixed(2)}` : '-'}
                       </span>
                     </div>
                   ))}
@@ -380,14 +325,11 @@ export default function OrcamentoPublico() {
             )}
 
             {workOrder.items.length === 0 && (
-              <p className="text-center text-muted-foreground py-4">
-                Nenhum item no orçamento
-              </p>
+              <p className="text-center text-muted-foreground py-4">Nenhum item no orçamento</p>
             )}
 
             <Separator />
 
-            {/* Total */}
             <div className="flex items-center justify-between text-lg">
               <span className="font-medium">Total</span>
               <span className="font-display text-2xl font-bold text-primary">
@@ -397,21 +339,16 @@ export default function OrcamentoPublico() {
           </CardContent>
         </Card>
 
-        {/* Actions */}
         <Card>
           <CardContent className="pt-6">
             <div className="grid gap-3 sm:grid-cols-2">
               <Button
                 size="lg"
-                className="w-full gap-2 bg-success hover:bg-success/90"
+                className="w-full gap-2 bg-green-600 hover:bg-green-700"
                 onClick={() => handleDecision(true)}
                 disabled={submitting}
               >
-                {submitting ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <CheckCircle className="h-5 w-5" />
-                )}
+                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-5 w-5" />}
                 Aprovar Orçamento
               </Button>
               <Button
@@ -421,11 +358,7 @@ export default function OrcamentoPublico() {
                 onClick={() => handleDecision(false)}
                 disabled={submitting}
               >
-                {submitting ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <XCircle className="h-5 w-5" />
-                )}
+                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-5 w-5" />}
                 Recusar Orçamento
               </Button>
             </div>

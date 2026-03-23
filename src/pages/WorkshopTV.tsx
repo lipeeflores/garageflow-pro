@@ -39,7 +39,7 @@ interface WorkflowColumn {
 const workflowColumns: WorkflowColumn[] = [
   { id: "AGUARDANDO_CHECKIN", title: "Aguardando", color: "bg-yellow-500", icon: Clock },
   { id: "EM_DIAGNOSTICO", title: "Diagnóstico", color: "bg-blue-500", icon: AlertCircle },
-  { id: "AGUARDANDO_ORCAMENTO", title: "Orçamento", color: "bg-orange-500", icon: Timer },
+  { id: "AGUARDANDO_APROVACAO", title: "Orçamento", color: "bg-orange-500", icon: Timer },
   { id: "EM_EXECUCAO", title: "Execução", color: "bg-purple-500", icon: Wrench },
   { id: "EM_QUALIDADE", title: "Qualidade", color: "bg-cyan-500", icon: CheckCircle2 },
   { id: "PRONTO_PARA_RETIRADA", title: "Pronto", color: "bg-green-500", icon: Car },
@@ -70,11 +70,25 @@ interface OSQueueProps {
 }
 
 function OSQueue({ highlightedOS }: OSQueueProps) {
+  const allSteps: WorkflowStep[] = [
+    "AGUARDANDO_CHECKIN", "CHECKIN_CONCLUIDO", "EM_DIAGNOSTICO", 
+    "AGUARDANDO_ORCAMENTO", "AGUARDANDO_APROVACAO", "APROVADO",
+    "EM_EXECUCAO", "AJUSTES", "EM_QUALIDADE", "PRONTO_PARA_RETIRADA"
+  ];
   const { data: workOrders, isLoading } = useWorkOrders({
-    workflow_step: workflowColumns.map(c => c.id),
+    workflow_step: allSteps,
   });
 
   const getOrdersByStep = (step: WorkflowStep) => {
+    if (step === "AGUARDANDO_CHECKIN") {
+      return workOrders?.filter(wo => wo.workflow_step === "AGUARDANDO_CHECKIN" || wo.workflow_step === "CHECKIN_CONCLUIDO") || [];
+    }
+    if (step === "AGUARDANDO_APROVACAO") {
+      return workOrders?.filter(wo => wo.workflow_step === "AGUARDANDO_ORCAMENTO" || wo.workflow_step === "AGUARDANDO_APROVACAO") || [];
+    }
+    if (step === "EM_EXECUCAO") {
+      return workOrders?.filter(wo => wo.workflow_step === "APROVADO" || wo.workflow_step === "EM_EXECUCAO" || wo.workflow_step === "AJUSTES") || [];
+    }
     return workOrders?.filter(wo => wo.workflow_step === step) || [];
   };
 
