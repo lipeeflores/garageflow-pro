@@ -52,7 +52,7 @@ export function KanbanCard({ order }: KanbanCardProps) {
         setCheckinOpen(true);
         break;
       case 'navigate':
-        navigate(`/ordem/${order.id}`);
+        navigate(`/ordens/${order.id}`);
         break;
       case 'update':
         if (config.nextStep) {
@@ -89,7 +89,7 @@ export function KanbanCard({ order }: KanbanCardProps) {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => navigate(`/ordem/${order.id}`)}>
+              <DropdownMenuItem onClick={() => navigate(`/ordens/${order.id}`)}>
                 Ver detalhes
               </DropdownMenuItem>
             </DropdownMenuContent>
