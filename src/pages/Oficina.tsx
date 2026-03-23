@@ -52,7 +52,7 @@ const topColumns: KanbanColumnConfig[] = [
     title: "Em Diagnóstico",
     icon: Stethoscope,
     color: "bg-violet-500",
-    workflowSteps: ["CHECKIN_CONCLUIDO", "EM_DIAGNOSTICO"],
+    workflowSteps: ["EM_DIAGNOSTICO"],
   },
   {
     id: "orcamento",
