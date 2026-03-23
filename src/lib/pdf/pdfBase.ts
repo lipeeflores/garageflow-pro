@@ -188,7 +188,7 @@ export function addFooter(doc: jsPDF, pageNumber?: number): void {
   // Footer text
   doc.setFontSize(8);
   doc.setTextColor(...COLORS.muted);
-  doc.text('MA Mecânica Multimarcas • Tel: (47) 9 8866-8001 • Blumenau/SC', 14, pageHeight - 10);
+  doc.text('MD Mecânica Multimarcas • Tel: (47) 8488-9108 • mdmultimarcas123@hotmail.com • Itapema/SC', 14, pageHeight - 10);
   
   if (pageNumber !== undefined) {
     const pageText = `Página ${pageNumber}`;
