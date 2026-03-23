@@ -79,7 +79,7 @@ const App = () => (
             <Route
               path="/veiculos"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute requiredRoles={['ADMIN', 'MANAGER']}>
                   <Veiculos />
                 </ProtectedRoute>
               }
@@ -87,7 +87,7 @@ const App = () => (
             <Route
               path="/ordens"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute requiredRoles={['ADMIN', 'MANAGER']}>
                   <Ordens />
                 </ProtectedRoute>
               }
@@ -95,7 +95,7 @@ const App = () => (
             <Route
               path="/ordens/:id"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute requiredRoles={['ADMIN', 'MANAGER']}>
                   <OrdemDetalhe />
                 </ProtectedRoute>
               }
@@ -126,7 +126,14 @@ const App = () => (
             />
             {/* Public routes - no auth required */}
             <Route path="/orcamento/:id" element={<OrcamentoPublico />} />
-            <Route path="/tv" element={<WorkshopTV />} />
+            <Route
+              path="/tv"
+              element={
+                <ProtectedRoute requiredRoles={['ADMIN', 'MANAGER']}>
+                  <WorkshopTV />
+                </ProtectedRoute>
+              }
+            />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
