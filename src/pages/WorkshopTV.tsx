@@ -189,17 +189,19 @@ function OSQueue({ highlightedOS }: OSQueueProps) {
 }
 
 function TodayAgenda() {
-  const { data: appointments, isLoading } = useTodayAppointments();
+  const { data, isLoading } = useTodayAndMissedAppointments();
 
-  const upcomingAppointments = appointments?.filter(a => 
-    a.status === "AGENDADO" && new Date(a.scheduled_at) > new Date()
-  ).slice(0, 5);
+  const todayAppointments = data?.today?.filter(a => 
+    a.status === "AGENDADO" || a.status === "CHEGOU"
+  ) || [];
+  const missedAppointments = data?.missed || [];
+  const allItems = [...missedAppointments, ...todayAppointments].slice(0, 6);
 
   if (isLoading) {
     return <div className="animate-pulse text-muted-foreground text-sm">Carregando...</div>;
   }
 
-  if (!upcomingAppointments || upcomingAppointments.length === 0) {
+  if (allItems.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
         <Calendar className="h-8 w-8 mb-2 opacity-50" />
@@ -208,31 +210,62 @@ function TodayAgenda() {
     );
   }
 
+  const now = new Date();
+
   return (
     <div className="space-y-2">
-      {upcomingAppointments.map((appointment) => (
-        <div
-          key={appointment.id}
-          className="flex items-center gap-3 p-2.5 rounded-lg bg-background/50 border border-border/50"
-        >
-          <div className="text-center min-w-[50px]">
-            <div className="text-lg font-bold font-display">
-              {format(new Date(appointment.scheduled_at), "HH:mm")}
+      {allItems.map((appointment) => {
+        const isNoShow = appointment.status === "NAO_COMPARECEU";
+        const isLate = appointment.status === "AGENDADO" && new Date(appointment.scheduled_at) < now;
+        const isArrived = appointment.status === "CHEGOU";
+
+        return (
+          <div
+            key={appointment.id}
+            className={cn(
+              "flex items-center gap-3 p-2.5 rounded-lg border",
+              isNoShow
+                ? "bg-red-500/10 border-red-500/50"
+                : isLate
+                ? "bg-yellow-500/10 border-yellow-500/50"
+                : isArrived
+                ? "bg-green-500/10 border-green-500/50"
+                : "bg-background/50 border-border/50"
+            )}
+          >
+            <div className="text-center min-w-[50px]">
+              <div className="text-lg font-bold font-display">
+                {format(new Date(appointment.scheduled_at), "HH:mm")}
+              </div>
             </div>
+            <div className="flex-1 min-w-0">
+              <div className="font-semibold text-sm truncate">
+                {appointment.vehicle?.plate || "---"}
+              </div>
+              <div className="text-xs text-muted-foreground truncate">
+                {appointment.customer?.full_name}
+              </div>
+            </div>
+            {isNoShow ? (
+              <Badge variant="destructive" className="text-[10px] shrink-0">
+                Remarcar
+              </Badge>
+            ) : isLate ? (
+              <Badge className="text-[10px] shrink-0 bg-yellow-600 hover:bg-yellow-700">
+                Atrasado
+              </Badge>
+            ) : isArrived ? (
+              <Badge className="text-[10px] shrink-0 bg-green-600 hover:bg-green-700">
+                Chegou
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="text-[10px] shrink-0">
+                {appointment.vehicle?.make}
+              </Badge>
+            )}
           </div>
-          <div className="flex-1 min-w-0">
-            <div className="font-semibold text-sm truncate">
-              {appointment.vehicle?.plate || "---"}
-            </div>
-            <div className="text-xs text-muted-foreground truncate">
-              {appointment.customer?.full_name}
-            </div>
-          </div>
-          <Badge variant="outline" className="text-[10px] shrink-0">
-            {appointment.vehicle?.make}
-          </Badge>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

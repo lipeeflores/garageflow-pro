@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { useMemo } from "react";
 
 export type AppointmentStatus = 'AGENDADO' | 'CHEGOU' | 'NAO_COMPARECEU' | 'REMARCADO' | 'CANCELADO';
 
@@ -28,11 +29,16 @@ export interface Appointment {
   };
 }
 
+function formatDateKey(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
 export function useAppointments(date?: Date) {
   const { profile } = useAuth();
+  const dateKey = date ? formatDateKey(date) : undefined;
 
   return useQuery({
-    queryKey: ['appointments', date?.toISOString()],
+    queryKey: ['appointments', dateKey],
     queryFn: async () => {
       if (!profile?.tenant_id) return [];
 
@@ -68,14 +74,77 @@ export function useAppointments(date?: Date) {
 }
 
 export function useTodayAppointments() {
-  return useAppointments(new Date());
+  const today = useMemo(() => new Date(), []);
+  return useAppointments(today);
+}
+
+/**
+ * Busca agendamentos de hoje + NAO_COMPARECEU de dias anteriores (para destaque)
+ */
+export function useTodayAndMissedAppointments() {
+  const { profile } = useAuth();
+  const todayKey = useMemo(() => formatDateKey(new Date()), []);
+
+  return useQuery({
+    queryKey: ['appointments', 'today-and-missed', todayKey],
+    queryFn: async () => {
+      if (!profile?.tenant_id) return [];
+
+      const today = new Date();
+      const startOfDay = new Date(today);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(today);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      // 1. Agendamentos de hoje (todos os status)
+      const { data: todayAppts, error: err1 } = await supabase
+        .from('appointments')
+        .select(`
+          *,
+          customer:customers(full_name, phone_number),
+          vehicle:vehicles(plate, make, model)
+        `)
+        .eq('tenant_id', profile.tenant_id)
+        .gte('scheduled_at', startOfDay.toISOString())
+        .lte('scheduled_at', endOfDay.toISOString())
+        .order('scheduled_at');
+
+      if (err1) throw err1;
+
+      // 2. NAO_COMPARECEU de dias anteriores (últimos 7 dias)
+      const sevenDaysAgo = new Date(today);
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+      const { data: missedAppts, error: err2 } = await supabase
+        .from('appointments')
+        .select(`
+          *,
+          customer:customers(full_name, phone_number),
+          vehicle:vehicles(plate, make, model)
+        `)
+        .eq('tenant_id', profile.tenant_id)
+        .eq('status', 'NAO_COMPARECEU')
+        .lt('scheduled_at', startOfDay.toISOString())
+        .gte('scheduled_at', sevenDaysAgo.toISOString())
+        .order('scheduled_at', { ascending: false });
+
+      if (err2) throw err2;
+
+      return {
+        today: (todayAppts || []) as Appointment[],
+        missed: (missedAppts || []) as Appointment[],
+      };
+    },
+    enabled: !!profile?.tenant_id,
+  });
 }
 
 export function useTodayScheduledAppointments() {
   const { profile } = useAuth();
+  const todayKey = useMemo(() => formatDateKey(new Date()), []);
 
   return useQuery({
-    queryKey: ['appointments', 'today', 'scheduled'],
+    queryKey: ['appointments', 'today', 'scheduled', todayKey],
     queryFn: async () => {
       if (!profile?.tenant_id) return [];
 
@@ -197,7 +266,6 @@ export function useConvertAppointmentToWorkOrder() {
     }) => {
       if (!profile?.tenant_id) throw new Error("Tenant not found");
 
-      // 1. Update appointment status to CHEGOU
       const { error: appointmentError } = await supabase
         .from('appointments')
         .update({ status: 'CHEGOU' })
@@ -205,7 +273,6 @@ export function useConvertAppointmentToWorkOrder() {
 
       if (appointmentError) throw appointmentError;
 
-      // 2. Create work order linked to appointment
       const { data: workOrder, error: workOrderError } = await supabase
         .from('work_orders')
         .insert({
