@@ -85,7 +85,7 @@ export function useTodayAndMissedAppointments() {
   const { profile } = useAuth();
   const todayKey = useMemo(() => formatDateKey(new Date()), []);
 
-  return useQuery({
+  return useQuery<{ today: Appointment[]; missed: Appointment[] }>({
     queryKey: ['appointments', 'today-and-missed', todayKey],
     queryFn: async () => {
       if (!profile?.tenant_id) return [];
