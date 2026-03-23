@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useWorkOrders, type WorkflowStep } from "@/hooks/useWorkOrders";
-import { useTodayAppointments } from "@/hooks/useAppointments";
+import { useTodayAndMissedAppointments } from "@/hooks/useAppointments";
 import { useMechanicRanking, formatMinutes } from "@/hooks/useMechanicRanking";
 import { useSoundAlerts } from "@/hooks/useSoundAlerts";
 import { supabase } from "@/integrations/supabase/client";
