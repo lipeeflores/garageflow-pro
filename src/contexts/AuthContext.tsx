@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState, ReactNode } from
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
-type AppRole = 'ADMIN' | 'MANAGER' | 'MECHANIC';
+type AppRole = 'ADMIN' | 'MANAGER' | 'MECHANIC' | 'PATIO';
 
 interface Profile {
   id: string;
@@ -31,7 +31,9 @@ interface AuthContextType {
   isAdmin: boolean;
   isManager: boolean;
   isMechanic: boolean;
+  isPatio: boolean;
   isAdminOrManager: boolean;
+  canSeePrices: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -45,7 +47,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const fetchUserData = async (userId: string) => {
     try {
-      // Fetch profile
       const { data: profileData } = await supabase
         .from('profiles')
         .select('*')
@@ -56,7 +57,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setProfile(profileData as Profile);
       }
 
-      // Fetch role
       const { data: roleData } = await supabase
         .from('user_roles')
         .select('role, tenant_id')
@@ -72,13 +72,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         
-        // Defer data fetching with setTimeout to avoid deadlock
         if (session?.user) {
           setTimeout(() => {
             fetchUserData(session.user.id);
@@ -92,7 +90,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     );
 
-    // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
@@ -142,7 +139,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isAdmin = userRole?.role === 'ADMIN';
   const isManager = userRole?.role === 'MANAGER';
   const isMechanic = userRole?.role === 'MECHANIC';
+  const isPatio = userRole?.role === 'PATIO';
   const isAdminOrManager = isAdmin || isManager;
+  const canSeePrices = isAdminOrManager; // Only admin/manager can see prices
 
   return (
     <AuthContext.Provider
@@ -158,7 +157,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAdmin,
         isManager,
         isMechanic,
+        isPatio,
         isAdminOrManager,
+        canSeePrices,
       }}
     >
       {children}

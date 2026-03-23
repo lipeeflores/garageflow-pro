@@ -26,7 +26,7 @@ interface NavItem {
   icon: React.ElementType;
   href: string;
   badge?: number;
-  roles?: Array<'ADMIN' | 'MANAGER' | 'MECHANIC'>;
+  roles?: Array<'ADMIN' | 'MANAGER' | 'MECHANIC' | 'PATIO'>;
 }
 
 function SidebarContent({ 
