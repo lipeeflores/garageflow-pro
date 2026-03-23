@@ -272,7 +272,6 @@ export function CheckinDialog({
         id: workOrderId,
         updates: {
           workflow_step: 'CHECKIN_CONCLUIDO',
-          current_mechanic_id: user?.id,
         },
       });
 

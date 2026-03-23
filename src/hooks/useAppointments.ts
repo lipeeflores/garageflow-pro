@@ -282,7 +282,6 @@ export function useConvertAppointmentToWorkOrder() {
           appointment_id: appointmentId,
           initial_complaint: reason,
           workflow_step: 'AGUARDANDO_CHECKIN',
-          current_mechanic_id: user?.id,
           created_by: user?.id,
         })
         .select()
