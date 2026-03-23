@@ -4,7 +4,7 @@ import { Loader2 } from "lucide-react";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  requiredRoles?: Array<'ADMIN' | 'MANAGER' | 'MECHANIC'>;
+  requiredRoles?: Array<'ADMIN' | 'MANAGER' | 'MECHANIC' | 'PATIO'>;
 }
 
 export function ProtectedRoute({ children, requiredRoles }: ProtectedRouteProps) {
@@ -25,7 +25,7 @@ export function ProtectedRoute({ children, requiredRoles }: ProtectedRouteProps)
 
   if (requiredRoles && userRole && !requiredRoles.includes(userRole.role)) {
     // Redirect mechanics to their default page (/ponto) instead of home
-    if (userRole.role === 'MECHANIC') {
+    if (userRole.role === 'MECHANIC' || userRole.role === 'PATIO') {
       return <Navigate to="/ponto" replace />;
     }
     return <Navigate to="/" replace />;

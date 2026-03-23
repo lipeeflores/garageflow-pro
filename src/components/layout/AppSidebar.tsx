@@ -26,7 +26,7 @@ interface NavItem {
   icon: React.ElementType;
   href: string;
   badge?: number;
-  roles?: Array<'ADMIN' | 'MANAGER' | 'MECHANIC'>;
+  roles?: Array<'ADMIN' | 'MANAGER' | 'MECHANIC' | 'PATIO'>;
 }
 
 function SidebarContent({ 
@@ -50,7 +50,7 @@ function SidebarContent({
     { title: "Oficina", icon: Wrench, href: "/oficina", badge: pendingCount > 0 ? pendingCount : undefined },
     { title: "Clientes", icon: Users, href: "/clientes", roles: ['ADMIN', 'MANAGER'] },
     { title: "Veículos", icon: Car, href: "/veiculos", roles: ['ADMIN', 'MANAGER'] },
-    { title: "Ordens de Serviço", icon: FileText, href: "/ordens" },
+    { title: "Ordens de Serviço", icon: FileText, href: "/ordens", roles: ['ADMIN', 'MANAGER', 'MECHANIC'] },
   ];
 
   const secondaryNavItems: NavItem[] = [
@@ -168,7 +168,8 @@ function SidebarContent({
               </p>
               <p className="truncate text-xs text-sidebar-foreground/60">
                 {userRole?.role === 'ADMIN' ? 'Administrador' : 
-                 userRole?.role === 'MANAGER' ? 'Gerente' : 'Mecânico'}
+                 userRole?.role === 'MANAGER' ? 'Gerente' : 
+                 userRole?.role === 'PATIO' ? 'PC do Pátio' : 'Mecânico'}
               </p>
             </div>
           )}

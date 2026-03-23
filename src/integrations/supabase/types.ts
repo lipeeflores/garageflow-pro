@@ -1207,7 +1207,7 @@ export type Database = {
       mark_expired_appointments: { Args: never; Returns: undefined }
     }
     Enums: {
-      app_role: "ADMIN" | "MANAGER" | "MECHANIC"
+      app_role: "ADMIN" | "MANAGER" | "MECHANIC" | "PATIO"
       appointment_status:
         | "AGENDADO"
         | "CHEGOU"
@@ -1384,7 +1384,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["ADMIN", "MANAGER", "MECHANIC"],
+      app_role: ["ADMIN", "MANAGER", "MECHANIC", "PATIO"],
       appointment_status: [
         "AGENDADO",
         "CHEGOU",
