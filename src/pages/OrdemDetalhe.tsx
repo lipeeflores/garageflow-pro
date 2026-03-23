@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -36,6 +37,7 @@ import {
   PaymentDialog,
   ReturnWorkOrderDialog,
 } from "@/components/workorder";
+import { MechanicPickerDialog } from "@/components/workorder/MechanicPickerDialog";
 import { CheckinDialog } from "@/components/checkin";
 import { usePDFExport } from "@/hooks/usePDFExport";
 import { cn } from "@/lib/utils";
@@ -79,11 +81,12 @@ const priorityConfig = {
 export default function OrdemDetalhe() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { isAdminOrManager, user } = useAuth();
+  const { isAdminOrManager, isMechanic, isPatio, canSeePrices, user } = useAuth();
   const { data: workOrder, isLoading } = useWorkOrder(id);
   const { data: returnData } = useWorkOrderReturns(id || "");
   const updateWorkOrder = useUpdateWorkOrder();
   const { exportWorkOrderPDF, exportBudgetPDF } = usePDFExport();
+  const [mechanicPickerOpen, setMechanicPickerOpen] = useState(false);
 
   const canEdit = isAdminOrManager || 
     (workOrder?.current_mechanic_id === user?.id);
@@ -94,6 +97,36 @@ export default function OrdemDetalhe() {
       id,
       updates: { workflow_step: newStep },
     });
+  };
+
+  const handlePegarServico = async (mechanicId?: string) => {
+    if (!id) return;
+    
+    if (isMechanic) {
+      // Mechanic auto-assigns to self
+      await updateWorkOrder.mutateAsync({
+        id,
+        updates: { 
+          workflow_step: 'EM_DIAGNOSTICO',
+          current_mechanic_id: user?.id,
+        },
+      });
+    } else if (isAdminOrManager || isPatio) {
+      if (mechanicId) {
+        // Admin/Patio selected a mechanic
+        await updateWorkOrder.mutateAsync({
+          id,
+          updates: { 
+            workflow_step: 'EM_DIAGNOSTICO',
+            current_mechanic_id: mechanicId,
+          },
+        });
+        setMechanicPickerOpen(false);
+      } else {
+        // Open picker
+        setMechanicPickerOpen(true);
+      }
+    }
   };
 
   if (isLoading) {
@@ -136,6 +169,7 @@ export default function OrdemDetalhe() {
   }
 
   const priority = workOrder.priority || "MEDIA";
+  const showBudgetTab = canSeePrices;
 
   return (
     <AppLayout 
@@ -265,15 +299,17 @@ export default function OrdemDetalhe() {
 
             {/* Tabs */}
             <Tabs defaultValue="diagnosis" className="w-full">
-              <TabsList className="w-full grid grid-cols-3 h-auto">
+              <TabsList className={cn("w-full grid h-auto", showBudgetTab ? "grid-cols-3" : "grid-cols-2")}>
                 <TabsTrigger value="diagnosis" className="gap-1 sm:gap-2 py-2 px-2 sm:px-3 text-xs sm:text-sm">
                   <Wrench className="h-3 w-3 sm:h-4 sm:w-4" />
                   <span className="hidden xs:inline sm:inline">Diagnóstico</span>
                 </TabsTrigger>
-                <TabsTrigger value="budget" className="gap-1 sm:gap-2 py-2 px-2 sm:px-3 text-xs sm:text-sm">
-                  <FileText className="h-3 w-3 sm:h-4 sm:w-4" />
-                  <span className="hidden xs:inline sm:inline">Orçamento</span>
-                </TabsTrigger>
+                {showBudgetTab && (
+                  <TabsTrigger value="budget" className="gap-1 sm:gap-2 py-2 px-2 sm:px-3 text-xs sm:text-sm">
+                    <FileText className="h-3 w-3 sm:h-4 sm:w-4" />
+                    <span className="hidden xs:inline sm:inline">Orçamento</span>
+                  </TabsTrigger>
+                )}
                 <TabsTrigger value="timeline" className="gap-1 sm:gap-2 py-2 px-2 sm:px-3 text-xs sm:text-sm">
                   <Clock className="h-3 w-3 sm:h-4 sm:w-4" />
                   <span className="hidden xs:inline sm:inline">Histórico</span>
@@ -288,12 +324,14 @@ export default function OrdemDetalhe() {
                 />
               </TabsContent>
 
-              <TabsContent value="budget" className="mt-4">
-                <WorkOrderBudget 
-                  workOrderId={workOrder.id}
-                  canEdit={canEdit}
-                />
-              </TabsContent>
+              {showBudgetTab && (
+                <TabsContent value="budget" className="mt-4">
+                  <WorkOrderBudget 
+                    workOrderId={workOrder.id}
+                    canEdit={canEdit}
+                  />
+                </TabsContent>
+              )}
 
               <TabsContent value="timeline" className="mt-4">
                 <Card>
@@ -326,20 +364,11 @@ export default function OrdemDetalhe() {
                   />
                 )}
 
-                {/* Start Diagnosis */}
+                {/* Pegar Serviço - different behavior per role */}
                 {workOrder.workflow_step === "CHECKIN_CONCLUIDO" && (
                   <Button 
                     className="w-full gap-2"
-                    onClick={async () => {
-                      if (!id) return;
-                      await updateWorkOrder.mutateAsync({
-                        id,
-                        updates: { 
-                          workflow_step: 'EM_DIAGNOSTICO',
-                          current_mechanic_id: user?.id,
-                        },
-                      });
-                    }}
+                    onClick={() => handlePegarServico()}
                     disabled={updateWorkOrder.isPending}
                   >
                     <Wrench className="h-4 w-4" />
@@ -360,7 +389,7 @@ export default function OrdemDetalhe() {
                   </Button>
                 )}
 
-                {/* Send for Approval */}
+                {/* Send for Approval - ADMIN only */}
                 {workOrder.workflow_step === "AGUARDANDO_ORCAMENTO" && isAdminOrManager && (
                   <Button 
                     className="w-full gap-2"
@@ -372,7 +401,7 @@ export default function OrdemDetalhe() {
                   </Button>
                 )}
 
-                {/* Awaiting Approval - Share with customer */}
+                {/* Awaiting Approval - Share with customer - ADMIN only */}
                 {workOrder.workflow_step === "AGUARDANDO_APROVACAO" && isAdminOrManager && (
                   <>
                     <ShareBudgetButton
@@ -423,7 +452,7 @@ export default function OrdemDetalhe() {
                   </Button>
                 )}
 
-                {/* Quality Actions - Use QC Dialog */}
+                {/* Quality Actions - ADMIN only */}
                 {workOrder.workflow_step === "EM_QUALIDADE" && isAdminOrManager && (
                   <QualityControlDialog
                     workOrderId={workOrder.id}
@@ -446,7 +475,7 @@ export default function OrdemDetalhe() {
                   </Button>
                 )}
 
-                {/* Finalize */}
+                {/* Finalize - ADMIN only */}
                 {workOrder.workflow_step === "PRONTO_PARA_RETIRADA" && isAdminOrManager && (
                   <>
                     <PaymentDialog
@@ -463,7 +492,7 @@ export default function OrdemDetalhe() {
                   </>
                 )}
 
-                {/* Payment for Finalized */}
+                {/* Payment for Finalized - ADMIN only */}
                 {workOrder.workflow_step === "FINALIZADO" && isAdminOrManager && (
                   <PaymentDialog
                     workOrderId={workOrder.id}
@@ -471,7 +500,7 @@ export default function OrdemDetalhe() {
                   />
                 )}
 
-                {/* Return/Warranty - Show for finalized orders */}
+                {/* Return/Warranty - ADMIN only */}
                 {workOrder.workflow_step === "FINALIZADO" && 
                  workOrder.order_type !== "RETORNO" && 
                  isAdminOrManager && (
@@ -488,27 +517,30 @@ export default function OrdemDetalhe() {
                   </>
                 )}
 
-                <Separator />
-
-                {/* PDF Export Buttons */}
-                <div className="space-y-2">
-                  <Button 
-                    variant="outline" 
-                    className="w-full gap-2"
-                    onClick={() => exportWorkOrderPDF(workOrder.id)}
-                  >
-                    <Download className="h-4 w-4" />
-                    Exportar OS (PDF)
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    className="w-full gap-2"
-                    onClick={() => exportBudgetPDF(workOrder.id)}
-                  >
-                    <FileDown className="h-4 w-4" />
-                    Exportar Orçamento
-                  </Button>
-                </div>
+                {/* PDF Export Buttons - ADMIN only */}
+                {canSeePrices && (
+                  <>
+                    <Separator />
+                    <div className="space-y-2">
+                      <Button 
+                        variant="outline" 
+                        className="w-full gap-2"
+                        onClick={() => exportWorkOrderPDF(workOrder.id)}
+                      >
+                        <Download className="h-4 w-4" />
+                        Exportar OS (PDF)
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        className="w-full gap-2"
+                        onClick={() => exportBudgetPDF(workOrder.id)}
+                      >
+                        <FileDown className="h-4 w-4" />
+                        Exportar Orçamento
+                      </Button>
+                    </div>
+                  </>
+                )}
 
                 <Separator />
 
@@ -545,7 +577,6 @@ export default function OrdemDetalhe() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {/* This order is a RETURN - show link to original */}
                   {returnData?.asReturn && (
                     <div className="rounded-lg bg-destructive/10 p-3 space-y-2">
                       <p className="text-xs font-medium text-destructive">Esta OS é um retorno de:</p>
@@ -562,7 +593,6 @@ export default function OrdemDetalhe() {
                     </div>
                   )}
 
-                  {/* This order has spawned returns - show list */}
                   {returnData?.asOriginal?.map((ret) => (
                     <div key={ret.id} className="rounded-lg border border-destructive/20 p-3 space-y-2">
                       <div className="flex items-center justify-between">
@@ -593,6 +623,14 @@ export default function OrdemDetalhe() {
           </div>
         </div>
       </div>
+
+      {/* Mechanic Picker Dialog for Admin/Patio */}
+      <MechanicPickerDialog
+        open={mechanicPickerOpen}
+        onOpenChange={setMechanicPickerOpen}
+        onSelect={(mechanicId) => handlePegarServico(mechanicId)}
+        loading={updateWorkOrder.isPending}
+      />
     </AppLayout>
   );
 }
