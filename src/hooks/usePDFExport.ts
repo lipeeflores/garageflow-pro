@@ -81,7 +81,7 @@ export function usePDFExport() {
         .eq('work_order_id', workOrderId)
         .order('created_at', { ascending: false });
 
-      generateWorkOrderPDF({
+      await generateWorkOrderPDF({
         id: workOrder.id,
         created_at: workOrder.created_at!,
         workflow_step: workOrder.workflow_step,
