@@ -1,9 +1,8 @@
-import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Clock, Car } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { CheckinDialog } from "@/components/checkin";
 import { useConvertAppointmentToWorkOrder, type Appointment } from "@/hooks/useAppointments";
 
 interface AppointmentKanbanCardProps {
@@ -12,8 +11,7 @@ interface AppointmentKanbanCardProps {
 
 export function AppointmentKanbanCard({ appointment }: AppointmentKanbanCardProps) {
   const convertToWorkOrder = useConvertAppointmentToWorkOrder();
-  const [checkinOpen, setCheckinOpen] = useState(false);
-  const [createdWorkOrderId, setCreatedWorkOrderId] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   const scheduledTime = format(new Date(appointment.scheduled_at), "HH:mm", {
     locale: ptBR,
@@ -30,17 +28,14 @@ export function AppointmentKanbanCard({ appointment }: AppointmentKanbanCardProp
         vehicleId: appointment.vehicle_id,
         reason: appointment.reason,
       });
-      // Immediately open check-in dialog after creating the WO
-      setCreatedWorkOrderId(workOrder.id);
-      setCheckinOpen(true);
+      navigate(`/ordens/${workOrder.id}`);
     } catch (error) {
       // Error toast is handled by the mutation
     }
   };
 
   return (
-    <>
-      <div className="group relative rounded-lg border border-border/50 bg-card/80 p-3 transition-all hover:border-border hover:shadow-md">
+    <div className="group relative rounded-lg border border-border/50 bg-card/80 p-3 transition-all hover:border-border hover:shadow-md">
         {/* Header */}
         <div className="mb-2">
           <p className="text-sm font-medium truncate">
@@ -80,16 +75,6 @@ export function AppointmentKanbanCard({ appointment }: AppointmentKanbanCardProp
         >
           {convertToWorkOrder.isPending ? "Criando OS..." : "Chegou"}
         </Button>
-      </div>
-
-      {createdWorkOrderId && (
-        <CheckinDialog
-          open={checkinOpen}
-          onOpenChange={setCheckinOpen}
-          workOrderId={createdWorkOrderId}
-          vehiclePlate={appointment.vehicle?.plate || "SEM PLACA"}
-        />
-      )}
-    </>
+    </div>
   );
 }

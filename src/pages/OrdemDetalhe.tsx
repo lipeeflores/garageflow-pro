@@ -327,14 +327,23 @@ export default function OrdemDetalhe() {
                 )}
 
                 {/* Start Diagnosis */}
-                {workOrder.workflow_step === "CHECKIN_CONCLUIDO" && canEdit && (
+                {workOrder.workflow_step === "CHECKIN_CONCLUIDO" && (
                   <Button 
                     className="w-full gap-2"
-                    onClick={() => handleWorkflowAction("EM_DIAGNOSTICO")}
+                    onClick={async () => {
+                      if (!id) return;
+                      await updateWorkOrder.mutateAsync({
+                        id,
+                        updates: { 
+                          workflow_step: 'EM_DIAGNOSTICO',
+                          current_mechanic_id: user?.id,
+                        },
+                      });
+                    }}
                     disabled={updateWorkOrder.isPending}
                   >
                     <Wrench className="h-4 w-4" />
-                    Iniciar Diagnóstico
+                    Pegar Serviço
                   </Button>
                 )}
 

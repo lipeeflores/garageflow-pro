@@ -45,7 +45,7 @@ const topColumns: KanbanColumnConfig[] = [
     title: "Aguard. Mecânico",
     icon: Clock,
     color: "bg-yellow-500",
-    workflowSteps: ["CHECKIN_CONCLUIDO"],
+    workflowSteps: ["AGUARDANDO_CHECKIN", "CHECKIN_CONCLUIDO"],
   },
   {
     id: "diagnostico",

@@ -1,9 +1,7 @@
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { MoreVertical, Clock } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -11,15 +9,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { CheckinDialog } from "@/components/checkin";
 import { useUpdateWorkOrder, type WorkOrder, type WorkflowStep } from "@/hooks/useWorkOrders";
 
 interface KanbanCardProps {
   order: WorkOrder;
 }
 
-const actionConfig: Record<WorkflowStep, { label: string; action: 'checkin' | 'navigate' | 'update'; nextStep?: WorkflowStep } | null> = {
-  AGUARDANDO_CHECKIN: { label: "Check-in", action: 'checkin' },
+const actionConfig: Record<WorkflowStep, { label: string; action: 'navigate' | 'update'; nextStep?: WorkflowStep } | null> = {
+  AGUARDANDO_CHECKIN: { label: "Check-in", action: 'navigate' },
   CHECKIN_CONCLUIDO: { label: "Pegar Serviço", action: 'navigate' },
   EM_DIAGNOSTICO: { label: "Diagnóstico", action: 'navigate' },
   AGUARDANDO_ORCAMENTO: { label: "Orçamento", action: 'navigate' },
@@ -36,7 +33,6 @@ const actionConfig: Record<WorkflowStep, { label: string; action: 'checkin' | 'n
 export function KanbanCard({ order }: KanbanCardProps) {
   const navigate = useNavigate();
   const updateWorkOrder = useUpdateWorkOrder();
-  const [checkinOpen, setCheckinOpen] = useState(false);
 
   const config = actionConfig[order.workflow_step];
   const timeAgo = formatDistanceToNow(new Date(order.created_at || Date.now()), {
@@ -48,9 +44,6 @@ export function KanbanCard({ order }: KanbanCardProps) {
     if (!config) return;
 
     switch (config.action) {
-      case 'checkin':
-        setCheckinOpen(true);
-        break;
       case 'navigate':
         navigate(`/ordens/${order.id}`);
         break;
@@ -122,13 +115,6 @@ export function KanbanCard({ order }: KanbanCardProps) {
           )}
         </div>
       </div>
-
-      <CheckinDialog
-        open={checkinOpen}
-        onOpenChange={setCheckinOpen}
-        workOrderId={order.id}
-        vehiclePlate={order.vehicle?.plate || "SEM PLACA"}
-      />
     </>
   );
 }
