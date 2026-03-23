@@ -9,3 +9,4 @@ export { PaymentDialog } from './PaymentDialog';
 export { ReturnWorkOrderDialog } from './ReturnWorkOrderDialog';
 export { PhotoUpload } from './PhotoUpload';
 export { DiagnosisItemsList } from './DiagnosisItemsList';
+export { ExecutionChecklist } from './ExecutionChecklist';
