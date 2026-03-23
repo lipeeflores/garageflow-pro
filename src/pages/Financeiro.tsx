@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar } from "@/components/ui/calendar";
+import { BillsPanel } from "@/components/financeiro/BillsPanel";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   DollarSign,
@@ -359,138 +360,158 @@ export default function Financeiro() {
     exportFinancialPDF(dateRange.from, dateRange.to);
   };
 
+  const [mainTab, setMainTab] = useState("receitas");
+
   return (
     <AppLayout
       title="Dashboard Financeiro"
       subtitle={`Visão geral de ${currentMonth}`}
     >
       <div className="space-y-6 animate-fade-in">
-        {/* Export Actions */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-wrap items-center gap-2">
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" className="gap-2">
-                  <CalendarIcon className="h-4 w-4" />
-                  {format(dateRange.from, "dd/MM/yyyy")} - {format(dateRange.to, "dd/MM/yyyy")}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="range"
-                  selected={{ from: dateRange.from, to: dateRange.to }}
-                  onSelect={(range) => {
-                    if (range?.from && range?.to) {
-                      setDateRange({ from: range.from, to: range.to });
-                    }
-                  }}
-                  locale={ptBR}
-                  numberOfMonths={2}
-                />
-              </PopoverContent>
-            </Popover>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setDateRange({
-                from: startOfMonth(new Date()),
-                to: endOfMonth(new Date()),
-              })}
-            >
-              Mês Atual
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                const lastMonth = subMonths(new Date(), 1);
-                setDateRange({
-                  from: startOfMonth(lastMonth),
-                  to: endOfMonth(lastMonth),
-                });
-              }}
-            >
-              Mês Anterior
-            </Button>
-          </div>
-          
-          <Button onClick={handleExportPDF} className="gap-2 bg-accent hover:bg-accent/90">
-            <Download className="h-4 w-4" />
-            Exportar Relatório PDF
-          </Button>
-        </div>
-
-        {/* Summary Cards */}
-        <SummaryCards />
-
-        {/* Charts Tabs */}
-        <Tabs defaultValue="monthly" className="space-y-4">
+        {/* Main Tabs: Receitas vs Contas a Pagar */}
+        <Tabs value={mainTab} onValueChange={setMainTab}>
           <TabsList className="bg-muted/50">
-            <TabsTrigger value="monthly" className="gap-2">
+            <TabsTrigger value="receitas" className="gap-2">
               <TrendingUp className="h-4 w-4" />
-              Mensal
+              Receitas
             </TabsTrigger>
-            <TabsTrigger value="daily" className="gap-2">
-              <BarChart className="h-4 w-4" />
-              Diário
+            <TabsTrigger value="contas" className="gap-2">
+              <Wallet className="h-4 w-4" />
+              Contas a Pagar
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="monthly">
-            <Card>
-              <CardHeader>
-                <CardTitle>Faturamento Mensal</CardTitle>
-                <CardDescription>Últimos 6 meses de faturamento</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <MonthlyRevenueChart />
-              </CardContent>
-            </Card>
+          <TabsContent value="receitas" className="space-y-6">
+            {/* Export Actions */}
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-wrap items-center gap-2">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="gap-2">
+                      <CalendarIcon className="h-4 w-4" />
+                      {format(dateRange.from, "dd/MM/yyyy")} - {format(dateRange.to, "dd/MM/yyyy")}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="range"
+                      selected={{ from: dateRange.from, to: dateRange.to }}
+                      onSelect={(range) => {
+                        if (range?.from && range?.to) {
+                          setDateRange({ from: range.from, to: range.to });
+                        }
+                      }}
+                      locale={ptBR}
+                      numberOfMonths={2}
+                    />
+                  </PopoverContent>
+                </Popover>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setDateRange({
+                    from: startOfMonth(new Date()),
+                    to: endOfMonth(new Date()),
+                  })}
+                >
+                  Mês Atual
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const lastMonth = subMonths(new Date(), 1);
+                    setDateRange({
+                      from: startOfMonth(lastMonth),
+                      to: endOfMonth(lastMonth),
+                    });
+                  }}
+                >
+                  Mês Anterior
+                </Button>
+              </div>
+              
+              <Button onClick={handleExportPDF} className="gap-2 bg-accent hover:bg-accent/90">
+                <Download className="h-4 w-4" />
+                Exportar Relatório PDF
+              </Button>
+            </div>
+
+            {/* Summary Cards */}
+            <SummaryCards />
+
+            {/* Charts Tabs */}
+            <Tabs defaultValue="monthly" className="space-y-4">
+              <TabsList className="bg-muted/50">
+                <TabsTrigger value="monthly" className="gap-2">
+                  <TrendingUp className="h-4 w-4" />
+                  Mensal
+                </TabsTrigger>
+                <TabsTrigger value="daily" className="gap-2">
+                  <BarChart className="h-4 w-4" />
+                  Diário
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="monthly">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Faturamento Mensal</CardTitle>
+                    <CardDescription>Últimos 6 meses de faturamento</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <MonthlyRevenueChart />
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="daily">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Faturamento Diário</CardTitle>
+                    <CardDescription>Receitas do mês atual</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <DailyRevenueChart />
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+
+            {/* Bottom Grid */}
+            <div className="grid gap-6 lg:grid-cols-2">
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <CreditCard className="h-5 w-5 text-accent" />
+                    <CardTitle>Formas de Pagamento</CardTitle>
+                  </div>
+                  <CardDescription>Distribuição do mês atual</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <PaymentMethodsChart />
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <Receipt className="h-5 w-5 text-accent" />
+                    <CardTitle>Serviços Mais Realizados</CardTitle>
+                  </div>
+                  <CardDescription>Ranking por quantidade</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <TopServicesTable />
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
 
-          <TabsContent value="daily">
-            <Card>
-              <CardHeader>
-                <CardTitle>Faturamento Diário</CardTitle>
-                <CardDescription>Receitas do mês atual</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <DailyRevenueChart />
-              </CardContent>
-            </Card>
+          <TabsContent value="contas">
+            <BillsPanel />
           </TabsContent>
         </Tabs>
-
-        {/* Bottom Grid */}
-        <div className="grid gap-6 lg:grid-cols-2">
-          {/* Payment Methods */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <CreditCard className="h-5 w-5 text-accent" />
-                <CardTitle>Formas de Pagamento</CardTitle>
-              </div>
-              <CardDescription>Distribuição do mês atual</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <PaymentMethodsChart />
-            </CardContent>
-          </Card>
-
-          {/* Top Services */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <Receipt className="h-5 w-5 text-accent" />
-                <CardTitle>Serviços Mais Realizados</CardTitle>
-              </div>
-              <CardDescription>Ranking por quantidade</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <TopServicesTable />
-            </CardContent>
-          </Card>
-        </div>
       </div>
     </AppLayout>
   );

@@ -128,6 +128,71 @@ export type Database = {
           },
         ]
       }
+      bills: {
+        Row: {
+          amount: number
+          category: Database["public"]["Enums"]["bill_category"]
+          created_at: string | null
+          created_by: string | null
+          description: string
+          due_date: string
+          id: string
+          is_recurring: boolean | null
+          notes: string | null
+          paid_amount: number | null
+          paid_at: string | null
+          recurrence_day: number | null
+          status: Database["public"]["Enums"]["bill_status"]
+          supplier: string | null
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          amount: number
+          category: Database["public"]["Enums"]["bill_category"]
+          created_at?: string | null
+          created_by?: string | null
+          description: string
+          due_date: string
+          id?: string
+          is_recurring?: boolean | null
+          notes?: string | null
+          paid_amount?: number | null
+          paid_at?: string | null
+          recurrence_day?: number | null
+          status?: Database["public"]["Enums"]["bill_status"]
+          supplier?: string | null
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          amount?: number
+          category?: Database["public"]["Enums"]["bill_category"]
+          created_at?: string | null
+          created_by?: string | null
+          description?: string
+          due_date?: string
+          id?: string
+          is_recurring?: boolean | null
+          notes?: string | null
+          paid_amount?: number | null
+          paid_at?: string | null
+          recurrence_day?: number | null
+          status?: Database["public"]["Enums"]["bill_status"]
+          supplier?: string | null
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bills_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customers: {
         Row: {
           address: string | null
@@ -1221,6 +1286,8 @@ export type Database = {
         | "EXECUTION_PHOTO"
         | "TIMECLOCK_PHOTO"
         | "OTHER"
+      bill_category: "FIXA" | "FLUTUANTE"
+      bill_status: "PENDENTE" | "PAGO" | "VENCIDO" | "CANCELADO"
       box_location: "BOX_1" | "BOX_2" | "BOX_3" | "BOX_4" | "PATIO"
       financial_entry_type: "RECEITA" | "DESPESA"
       fuel_level: "RESERVA" | "QUARTO" | "METADE" | "TRES_QUARTOS" | "COMPLETO"
@@ -1400,6 +1467,8 @@ export const Constants = {
         "TIMECLOCK_PHOTO",
         "OTHER",
       ],
+      bill_category: ["FIXA", "FLUTUANTE"],
+      bill_status: ["PENDENTE", "PAGO", "VENCIDO", "CANCELADO"],
       box_location: ["BOX_1", "BOX_2", "BOX_3", "BOX_4", "PATIO"],
       financial_entry_type: ["RECEITA", "DESPESA"],
       fuel_level: ["RESERVA", "QUARTO", "METADE", "TRES_QUARTOS", "COMPLETO"],
