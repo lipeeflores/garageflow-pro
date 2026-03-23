@@ -58,6 +58,7 @@ type ItemFormData = z.infer<typeof itemSchema>;
 interface WorkOrderBudgetProps {
   workOrderId: string;
   canEdit: boolean;
+  currentStep?: string;
 }
 
 export function WorkOrderBudget({ workOrderId, canEdit }: WorkOrderBudgetProps) {
