@@ -52,7 +52,7 @@ export function KanbanCard({ order }: KanbanCardProps) {
         setCheckinOpen(true);
         break;
       case 'navigate':
-        navigate(`/ordem/${order.id}`);
+        navigate(`/ordens/${order.id}`);
         break;
       case 'update':
         if (config.nextStep) {
