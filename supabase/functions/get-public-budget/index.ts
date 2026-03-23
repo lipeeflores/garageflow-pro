@@ -107,13 +107,37 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Fetch diagnostics
+    const { data: diagnostics } = await supabase
+      .from("work_order_diagnostics")
+      .select("technical_report, created_at, mechanic_id")
+      .eq("work_order_id", id)
+      .order("created_at", { ascending: false });
+
+    // Fetch mechanic names for diagnostics
+    let diagnosticsWithNames = diagnostics || [];
+    if (diagnostics && diagnostics.length > 0) {
+      const mechanicIds = [...new Set(diagnostics.map((d: any) => d.mechanic_id))];
+      const { data: mechanics } = await supabase
+        .from("profiles")
+        .select("id, full_name")
+        .in("id", mechanicIds);
+      const mechanicMap: Record<string, string> = {};
+      (mechanics || []).forEach((m: any) => { mechanicMap[m.id] = m.full_name; });
+      diagnosticsWithNames = diagnostics.map((d: any) => ({
+        technical_report: d.technical_report,
+        created_at: d.created_at,
+        mechanic_name: mechanicMap[d.mechanic_id] || null,
+      }));
+    }
+
     // Combine items with pricing
     const itemsWithPricing = (items || []).map((item: any) => ({
       ...item,
       pricing: pricingMap[item.id] ? [pricingMap[item.id]] : [],
     }));
 
-    return new Response(JSON.stringify({ ...data, items: itemsWithPricing }), {
+    return new Response(JSON.stringify({ ...data, items: itemsWithPricing, diagnostics: diagnosticsWithNames }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {

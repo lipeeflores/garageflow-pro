@@ -284,6 +284,25 @@ export default function OrcamentoPublico() {
           </Card>
         )}
 
+        {workOrder.diagnostics && workOrder.diagnostics.length > 0 && (
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Diagnóstico Técnico</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {workOrder.diagnostics.map((diag, idx) => (
+                <div key={idx} className="rounded-lg bg-muted/50 p-3">
+                  <p className="text-sm">{diag.technical_report}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {diag.mechanic_name && `${diag.mechanic_name} • `}
+                    {format(new Date(diag.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                  </p>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
+
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Itens do Orçamento</CardTitle>
