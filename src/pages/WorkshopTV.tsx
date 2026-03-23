@@ -39,7 +39,7 @@ interface WorkflowColumn {
 const workflowColumns: WorkflowColumn[] = [
   { id: "AGUARDANDO_CHECKIN", title: "Aguardando", color: "bg-yellow-500", icon: Clock },
   { id: "EM_DIAGNOSTICO", title: "Diagnóstico", color: "bg-blue-500", icon: AlertCircle },
-  { id: "AGUARDANDO_ORCAMENTO", title: "Orçamento", color: "bg-orange-500", icon: Timer },
+  { id: "AGUARDANDO_APROVACAO", title: "Orçamento", color: "bg-orange-500", icon: Timer },
   { id: "EM_EXECUCAO", title: "Execução", color: "bg-purple-500", icon: Wrench },
   { id: "EM_QUALIDADE", title: "Qualidade", color: "bg-cyan-500", icon: CheckCircle2 },
   { id: "PRONTO_PARA_RETIRADA", title: "Pronto", color: "bg-green-500", icon: Car },
