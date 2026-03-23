@@ -159,7 +159,7 @@ export function BudgetQuickDialog({ order, open, onOpenChange }: BudgetQuickDial
         <DialogFooter className="flex-col sm:flex-row gap-2">
           {/* View full order link */}
           <Button variant="ghost" size="sm" asChild className="sm:mr-auto">
-            <a href={`/ordem/${order.id}`}>
+            <a href={`/ordens/${order.id}`}>
               <ExternalLink className="h-4 w-4 mr-1" />
               Ver OS completa
             </a>
