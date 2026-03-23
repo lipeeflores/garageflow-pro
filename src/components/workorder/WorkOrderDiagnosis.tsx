@@ -39,6 +39,7 @@ import {
 import { useUpdateWorkOrder } from "@/hooks/useWorkOrders";
 import { AudioRecorder } from "./AudioRecorder";
 import { PhotoUpload } from "./PhotoUpload";
+import { DiagnosisItemsList } from "./DiagnosisItemsList";
 import type { WorkflowStep } from "@/hooks/useWorkOrders";
 
 const diagnosisSchema = z.object({
@@ -351,6 +352,14 @@ export function WorkOrderDiagnosis({
             Nenhum diagnóstico registrado
           </p>
         </div>
+      )}
+
+      {/* Items/Parts Section - visible during diagnosis */}
+      {(currentStep === "EM_DIAGNOSTICO" || currentStep === "AGUARDANDO_ORCAMENTO" || currentStep === "EM_EXECUCAO" || currentStep === "AJUSTES") && (
+        <DiagnosisItemsList
+          workOrderId={workOrderId}
+          canEdit={canEdit && (currentStep === "EM_DIAGNOSTICO" || currentStep === "EM_EXECUCAO" || currentStep === "AJUSTES")}
+        />
       )}
 
       {/* Photo Upload Section */}
