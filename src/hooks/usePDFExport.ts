@@ -166,7 +166,7 @@ export function usePDFExport() {
         `)
         .eq('work_order_id', workOrderId);
 
-      generateBudgetPDF({
+      await generateBudgetPDF({
         id: workOrder.id,
         created_at: workOrder.created_at!,
         customer: {
