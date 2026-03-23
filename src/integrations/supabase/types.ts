@@ -1204,6 +1204,7 @@ export type Database = {
       is_admin_or_manager: { Args: { user_id: string }; Returns: boolean }
       is_manager: { Args: { user_id: string }; Returns: boolean }
       is_mechanic: { Args: { user_id: string }; Returns: boolean }
+      mark_expired_appointments: { Args: never; Returns: undefined }
     }
     Enums: {
       app_role: "ADMIN" | "MANAGER" | "MECHANIC"
