@@ -107,7 +107,7 @@ export function WorkflowKanban() {
                 <Card
                   key={order.id}
                   className="cursor-pointer border-0 bg-card shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5"
-                  onClick={() => navigate(`/ordem/${order.id}`)}
+                  onClick={() => navigate(`/ordens/${order.id}`)}
                 >
                   <CardContent className="p-2">
                     {/* Plate */}
