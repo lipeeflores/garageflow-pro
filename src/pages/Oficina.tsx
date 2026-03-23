@@ -41,11 +41,11 @@ const topColumns: KanbanColumnConfig[] = [
     isAppointments: true,
   },
   {
-    id: "aguardando_checkin",
+    id: "aguardando_mecanico",
     title: "Aguard. Mecânico",
     icon: Clock,
     color: "bg-yellow-500",
-    workflowSteps: ["AGUARDANDO_CHECKIN"],
+    workflowSteps: ["CHECKIN_CONCLUIDO"],
   },
   {
     id: "diagnostico",
