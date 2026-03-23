@@ -94,13 +94,14 @@ export async function addHeaderWithLogo(
   doc.setFontSize(14);
   doc.setTextColor(...COLORS.brand);
   doc.setFont('helvetica', 'bold');
-  doc.text('MA Mecânica Multimarcas', logoEndX, 16);
+  doc.text('MD Mecânica Multimarcas', logoEndX, 16);
   
   // Company info
-  doc.setFontSize(8);
+  doc.setFontSize(7);
   doc.setTextColor(...COLORS.muted);
   doc.setFont('helvetica', 'normal');
-  doc.text('Tel: (47) 9 8866-8001 • Blumenau/SC', logoEndX, 21);
+  doc.text('CNPJ: 05.887.728/0001-09 • Tel: (47) 8488-9108', logoEndX, 20);
+  doc.text('Rua 248, 721, Meia Praia, Itapema - SC, 88220-000', logoEndX, 23);
   
   // Horizontal line
   doc.setDrawColor(...COLORS.primary);
