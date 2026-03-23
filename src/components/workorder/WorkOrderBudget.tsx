@@ -61,7 +61,7 @@ interface WorkOrderBudgetProps {
   currentStep?: string;
 }
 
-export function WorkOrderBudget({ workOrderId, canEdit }: WorkOrderBudgetProps) {
+export function WorkOrderBudget({ workOrderId, canEdit, currentStep }: WorkOrderBudgetProps) {
   const [showForm, setShowForm] = useState(false);
   const { isAdminOrManager } = useAuth();
   

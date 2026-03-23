@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQueryClient } from "@tanstack/react-query";
+import { ExecutionChecklist } from "./ExecutionChecklist";
 
 interface QualityControlDialogProps {
   workOrderId: string;
@@ -40,7 +41,6 @@ export function QualityControlDialog({
 
     setSubmitting(true);
     try {
-      // Create quality record
       const { error: qcError } = await supabase
         .from('work_order_quality')
         .insert({
@@ -54,7 +54,6 @@ export function QualityControlDialog({
 
       if (qcError) throw qcError;
 
-      // Update work order status
       const newStep = approve ? 'PRONTO_PARA_RETIRADA' : 'AJUSTES';
       const { error: updateError } = await supabase
         .from('work_orders')
@@ -63,7 +62,6 @@ export function QualityControlDialog({
 
       if (updateError) throw updateError;
 
-      // Invalidate queries
       queryClient.invalidateQueries({ queryKey: ['work_orders'] });
       queryClient.invalidateQueries({ queryKey: ['work_order', workOrderId] });
 
@@ -99,15 +97,21 @@ export function QualityControlDialog({
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Controle de Qualidade</DialogTitle>
           <DialogDescription>
-            Inspecione o veículo e registre sua avaliação.
+            Confira o checklist do mecânico e inspecione o veículo.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
+          {/* Show mechanic's completed checklist */}
+          <ExecutionChecklist
+            workOrderId={workOrderId}
+            readOnly
+          />
+
           <div className="space-y-2">
             <Label htmlFor="qc-notes">Observações da Inspeção</Label>
             <Textarea
