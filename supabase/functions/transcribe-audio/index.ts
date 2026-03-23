@@ -30,9 +30,16 @@ serve(async (req) => {
 
     console.log(`Processing audio file: ${audioFile.name}, size: ${audioFile.size}`);
 
-    // Convert audio to base64
+    // Convert audio to base64 (chunked to avoid stack overflow)
     const arrayBuffer = await audioFile.arrayBuffer();
-    const base64Audio = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+    const bytes = new Uint8Array(arrayBuffer);
+    let binary = '';
+    const chunkSize = 8192;
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      const chunk = bytes.subarray(i, i + chunkSize);
+      binary += String.fromCharCode(...chunk);
+    }
+    const base64Audio = btoa(binary);
     const mimeType = audioFile.type || "audio/webm";
 
     // Use Lovable AI Gateway with Gemini for audio transcription

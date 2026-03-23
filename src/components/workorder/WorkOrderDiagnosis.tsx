@@ -354,6 +354,14 @@ export function WorkOrderDiagnosis({
         </div>
       )}
 
+      {/* Items/Parts Section - visible during diagnosis */}
+      {(currentStep === "EM_DIAGNOSTICO" || currentStep === "AGUARDANDO_ORCAMENTO" || currentStep === "EM_EXECUCAO" || currentStep === "AJUSTES") && (
+        <DiagnosisItemsList
+          workOrderId={workOrderId}
+          canEdit={canEdit && (currentStep === "EM_DIAGNOSTICO" || currentStep === "EM_EXECUCAO" || currentStep === "AJUSTES")}
+        />
+      )}
+
       {/* Photo Upload Section */}
       {(currentStep === "EM_DIAGNOSTICO" || currentStep === "EM_EXECUCAO" || currentStep === "AJUSTES") && canEdit && (
         <Card>
