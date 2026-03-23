@@ -294,7 +294,7 @@ function PendingOrderCard({ order, type }: PendingOrderCardProps) {
               className="gap-1"
               asChild
             >
-              <a href={`/ordem/${order.id}`}>
+              <a href={`/ordens/${order.id}`}>
                 <FileText className="h-3 w-3" />
                 <span className="hidden sm:inline">Ver OS</span>
               </a>
