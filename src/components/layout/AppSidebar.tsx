@@ -49,8 +49,8 @@ function SidebarContent({
     { title: "Agenda", icon: Calendar, href: "/agenda" },
     { title: "Oficina", icon: Wrench, href: "/oficina", badge: pendingCount > 0 ? pendingCount : undefined },
     { title: "Clientes", icon: Users, href: "/clientes", roles: ['ADMIN', 'MANAGER'] },
-    { title: "Veículos", icon: Car, href: "/veiculos" },
-    { title: "Ordens de Serviço", icon: FileText, href: "/ordens" },
+    { title: "Veículos", icon: Car, href: "/veiculos", roles: ['ADMIN', 'MANAGER'] },
+    { title: "Ordens de Serviço", icon: FileText, href: "/ordens", roles: ['ADMIN', 'MANAGER'] },
   ];
 
   const secondaryNavItems: NavItem[] = [
