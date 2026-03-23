@@ -87,7 +87,7 @@ const App = () => (
             <Route
               path="/ordens"
               element={
-                <ProtectedRoute requiredRoles={['ADMIN', 'MANAGER']}>
+              <ProtectedRoute>
                   <Ordens />
                 </ProtectedRoute>
               }
@@ -95,7 +95,7 @@ const App = () => (
             <Route
               path="/ordens/:id"
               element={
-                <ProtectedRoute requiredRoles={['ADMIN', 'MANAGER']}>
+              <ProtectedRoute>
                   <OrdemDetalhe />
                 </ProtectedRoute>
               }
