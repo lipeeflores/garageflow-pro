@@ -220,8 +220,10 @@ export default function OrcamentoPublico() {
             <div className="flex justify-center mb-3">
               <img src={logoImg} alt="MA Mecânica Multimarcas" className="h-16 object-contain" />
             </div>
-            <p className="text-sm text-muted-foreground font-medium">MA Mecânica Multimarcas</p>
-            <p className="text-xs text-muted-foreground">Tel: (47) 9 8866-8001 • Blumenau/SC</p>
+            <p className="text-sm text-muted-foreground font-medium">MD Mecânica Multimarcas</p>
+            <p className="text-xs text-muted-foreground">CNPJ: 05.887.728/0001-09 • Tel: (47) 8488-9108</p>
+            <p className="text-xs text-muted-foreground">Rua 248, 721, Meia Praia, Itapema - SC, 88220-000</p>
+            <p className="text-xs text-muted-foreground">mdmultimarcas123@hotmail.com</p>
             <Separator className="my-3" />
             <CardTitle className="font-display text-2xl">Orçamento de Serviço</CardTitle>
             <CardDescription>

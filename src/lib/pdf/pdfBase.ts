@@ -137,7 +137,7 @@ export function addHeader(
   doc: jsPDF, 
   title: string, 
   subtitle?: string,
-  companyName: string = 'MA Mecânica Multimarcas'
+  companyName: string = 'MD Mecânica Multimarcas'
 ): number {
   const pageWidth = doc.internal.pageSize.width;
   
