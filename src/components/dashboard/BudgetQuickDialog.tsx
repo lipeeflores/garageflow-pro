@@ -19,7 +19,6 @@ import {
   DollarSign,
   Loader2,
   Send,
-  ExternalLink,
   CheckCircle2,
   ClipboardList
 } from "lucide-react";
@@ -200,16 +199,7 @@ export function BudgetQuickDialog({ order, open, onOpenChange }: BudgetQuickDial
         </ScrollArea>
 
         <div className="border-t p-4 space-y-3">
-          <div className="flex flex-col sm:flex-row gap-2">
-            {/* View full order link */}
-            <Button variant="ghost" size="sm" asChild className="sm:mr-auto">
-              <a href={`/ordens/${order.id}`}>
-                <ExternalLink className="h-4 w-4 mr-1" />
-                Ver OS completa
-              </a>
-            </Button>
-
-            <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap justify-end gap-2">
               {/* Generate parts report */}
               <Button
                 variant="outline"
@@ -248,7 +238,6 @@ export function BudgetQuickDialog({ order, open, onOpenChange }: BudgetQuickDial
                   </>
                 )}
               </Button>
-            </div>
           </div>
         </div>
       </DialogContent>

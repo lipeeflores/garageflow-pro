@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -294,10 +295,10 @@ function PendingOrderCard({ order, type }: PendingOrderCardProps) {
               className="gap-1"
               asChild
             >
-              <a href={`/ordens/${order.id}`}>
+              <Link to={`/ordens/${order.id}`}>
                 <FileText className="h-3 w-3" />
                 <span className="hidden sm:inline">Ver OS</span>
-              </a>
+              </Link>
             </Button>
           </div>
         ) : (
@@ -307,11 +308,11 @@ function PendingOrderCard({ order, type }: PendingOrderCardProps) {
             className="ml-2 gap-1 shrink-0"
             asChild
           >
-            <a href={`/ordens/${order.id}`}>
+            <Link to={`/ordens/${order.id}`}>
               <FileText className="h-3 w-3" />
               Ver OS
               <ChevronRight className="h-3 w-3" />
-            </a>
+            </Link>
           </Button>
         )}
       </div>

@@ -4,6 +4,17 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
+function getPreferredAudioMimeType() {
+  const candidates = [
+    "audio/webm;codecs=opus",
+    "audio/webm",
+    "audio/mp4",
+    "audio/mpeg",
+  ];
+
+  return candidates.find((type) => MediaRecorder.isTypeSupported(type));
+}
+
 interface AudioRecorderProps {
   onTranscriptionComplete: (raw: string, refined: string, audioUrl: string) => void;
   vehicleContext?: string;
@@ -31,9 +42,10 @@ export function AudioRecorder({
   const startRecording = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4'
-      });
+      const mimeType = getPreferredAudioMimeType();
+      const mediaRecorder = mimeType
+        ? new MediaRecorder(stream, { mimeType })
+        : new MediaRecorder(stream);
       
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
@@ -106,8 +118,17 @@ export function AudioRecorder({
     setIsProcessing(true);
 
     try {
+      const mimeType = audioBlob.type || "audio/webm";
+      const extension = mimeType.includes("webm")
+        ? "webm"
+        : mimeType.includes("mpeg") || mimeType.includes("mp3")
+        ? "mp3"
+        : mimeType.includes("mp4") || mimeType.includes("m4a")
+        ? "m4a"
+        : "wav";
+
       // Upload audio to storage
-      const fileName = `diagnosis-${Date.now()}.webm`;
+      const fileName = `diagnosis-${Date.now()}.${extension}`;
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('attachments')
         .upload(`diagnosis-audio/${fileName}`, audioBlob, {
@@ -125,6 +146,7 @@ export function AudioRecorder({
       // Send to transcription edge function
       const formData = new FormData();
       formData.append('audio', audioBlob, fileName);
+      formData.append('mime_type', mimeType);
       if (vehicleContext) {
         formData.append('context', vehicleContext);
       }
@@ -133,7 +155,10 @@ export function AudioRecorder({
         body: formData,
       });
 
-      if (error) throw error;
+      if (error) throw new Error(error.message || "Erro ao transcrever áudio");
+      if (!data?.transcription_raw && !data?.transcription_refined) {
+        throw new Error("A transcrição retornou vazia");
+      }
 
       onTranscriptionComplete(
         data.transcription_raw || "",
@@ -153,7 +178,7 @@ export function AudioRecorder({
       console.error("Error processing audio:", error);
       toast({
         title: "Erro",
-        description: "Erro ao processar áudio. Tente novamente.",
+        description: error instanceof Error ? error.message : "Erro ao processar áudio. Tente novamente.",
         variant: "destructive",
       });
     } finally {

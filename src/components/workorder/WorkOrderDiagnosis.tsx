@@ -37,6 +37,8 @@ import {
   useCreateDiagnostic 
 } from "@/hooks/useWorkOrderDiagnostics";
 import { useUpdateWorkOrder } from "@/hooks/useWorkOrders";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 import { AudioRecorder } from "./AudioRecorder";
 import { PhotoUpload } from "./PhotoUpload";
 import { DiagnosisItemsList } from "./DiagnosisItemsList";
@@ -71,6 +73,7 @@ export function WorkOrderDiagnosis({
   const { data: diagnostics, isLoading } = useWorkOrderDiagnostics(workOrderId);
   const createDiagnostic = useCreateDiagnostic();
   const updateWorkOrder = useUpdateWorkOrder();
+  const { toast } = useToast();
   
   const form = useForm<DiagnosisFormData>({
     resolver: zodResolver(diagnosisSchema),
@@ -96,11 +99,38 @@ export function WorkOrderDiagnosis({
 
   const onSubmit = async (data: DiagnosisFormData) => {
     try {
+      let technicalReport = data.technical_report;
+      let transcriptionRaw = data.transcription_raw || null;
+      let transcriptionRefined = data.transcription_refined || null;
+
+      // Refino com IA para diagnóstico digitado manualmente
+      if (inputMode === "text" && technicalReport.trim().length >= 10) {
+        const { data: refinedData, error: refineError } = await supabase.functions.invoke("transcribe-audio", {
+          body: {
+            technical_report: technicalReport,
+            context: vehicleInfo || "",
+          },
+        });
+
+        if (refineError) {
+          console.error("Error refining diagnosis text:", refineError);
+          toast({
+            title: "Atenção",
+            description: "Não foi possível refinar com IA agora. O texto original será salvo.",
+            variant: "destructive",
+          });
+        } else if (refinedData?.transcription_refined) {
+          transcriptionRaw = technicalReport;
+          transcriptionRefined = refinedData.transcription_refined;
+          technicalReport = refinedData.transcription_refined;
+        }
+      }
+
       await createDiagnostic.mutateAsync({
         work_order_id: workOrderId,
-        technical_report: data.technical_report,
-        transcription_raw: data.transcription_raw || null,
-        transcription_refined: data.transcription_refined || null,
+        technical_report: technicalReport,
+        transcription_raw: transcriptionRaw,
+        transcription_refined: transcriptionRefined,
         voice_memo_url: data.voice_memo_url || null,
       });
 
