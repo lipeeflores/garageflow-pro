@@ -25,6 +25,8 @@ import {
   AlertTriangle,
   Upload,
   ImagePlus,
+  User,
+  ArrowLeft,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format, differenceInMinutes, parseISO } from "date-fns";
@@ -113,6 +115,8 @@ export default function Ponto() {
   const [showFallbackDialog, setShowFallbackDialog] = useState(false);
   const [uploadedPhoto, setUploadedPhoto] = useState<File | null>(null);
   const [uploadedPhotoPreview, setUploadedPhotoPreview] = useState<string | null>(null);
+  const [selectedMechanicId, setSelectedMechanicId] = useState<string | null>(null);
+  const [selectedMechanicName, setSelectedMechanicName] = useState<string | null>(null);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -120,8 +124,38 @@ export default function Ponto() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const { toast } = useToast();
-  const { profile, user } = useAuth();
+  const { profile, user, isPatio } = useAuth();
   const queryClient = useQueryClient();
+
+  // The effective profile_id for timeclock: if PATIO, use selected mechanic; otherwise use own id
+  const effectiveProfileId = isPatio ? selectedMechanicId : user?.id;
+
+  // Fetch mechanics list for PATIO users
+  const { data: mechanics = [] } = useQuery({
+    queryKey: ["mechanics-for-ponto", profile?.tenant_id],
+    queryFn: async () => {
+      if (!profile?.tenant_id) return [];
+      
+      const { data: roles } = await supabase
+        .from("user_roles")
+        .select("user_id")
+        .eq("tenant_id", profile.tenant_id)
+        .eq("role", "MECHANIC");
+
+      if (!roles?.length) return [];
+
+      const mechanicIds = roles.map(r => r.user_id);
+      
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, full_name")
+        .in("id", mechanicIds)
+        .eq("is_active", true);
+
+      return profiles || [];
+    },
+    enabled: isPatio && !!profile?.tenant_id,
+  });
 
   // Update clock every second
   useEffect(() => {
@@ -138,11 +172,11 @@ export default function Ponto() {
     };
   }, [uploadedPhotoPreview]);
 
-  // Fetch today's events
+  // Fetch today's events for effective profile
   const { data: todayEvents, isLoading } = useQuery({
-    queryKey: ['timeclock_events', user?.id],
+    queryKey: ['timeclock_events', effectiveProfileId],
     queryFn: async () => {
-      if (!user?.id || !profile?.tenant_id) return [];
+      if (!effectiveProfileId || !profile?.tenant_id) return [];
       
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -150,7 +184,7 @@ export default function Ponto() {
       const { data, error } = await supabase
         .from('timeclock_events')
         .select('*')
-        .eq('profile_id', user.id)
+        .eq('profile_id', effectiveProfileId)
         .eq('tenant_id', profile.tenant_id)
         .gte('event_time', today.toISOString())
         .order('event_time', { ascending: true });
@@ -158,7 +192,7 @@ export default function Ponto() {
       if (error) throw error;
       return data as TimeclockEvent[];
     },
-    enabled: !!user?.id && !!profile?.tenant_id,
+    enabled: !!effectiveProfileId && !!profile?.tenant_id,
     refetchInterval: 30000,
   });
 
@@ -225,7 +259,6 @@ export default function Ponto() {
   const startCamera = async () => {
     setCameraError(null);
     
-    // Check if mediaDevices is available
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       setCameraError("Seu navegador não suporta acesso à câmera");
       setShowFallbackDialog(true);
@@ -233,10 +266,7 @@ export default function Ponto() {
     }
     
     try {
-      // First set camera open to render the video element
       setIsCameraOpen(true);
-      
-      // Small delay to ensure video element is mounted
       await new Promise(resolve => setTimeout(resolve, 100));
       
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -248,7 +278,6 @@ export default function Ponto() {
         streamRef.current = stream;
         await videoRef.current.play();
       } else {
-        // If video ref not available, stop the stream
         stream.getTracks().forEach(track => track.stop());
         throw new Error("Video element not available");
       }
@@ -256,10 +285,8 @@ export default function Ponto() {
       console.error("Camera error:", error);
       setIsCameraOpen(false);
       
-      const errorMessage = error instanceof Error ? error.message : "Erro desconhecido";
       const errorName = error instanceof Error ? error.name : "";
       
-      // Determine specific error message
       let userMessage = "Não foi possível acessar a câmera.";
       if (errorName === "NotAllowedError" || errorName === "PermissionDeniedError") {
         userMessage = "Permissão de câmera negada. Verifique as configurações do navegador.";
@@ -314,7 +341,6 @@ export default function Ponto() {
     const file = e.target.files?.[0];
     if (!file) return;
     
-    // Validate file type
     if (!file.type.startsWith("image/")) {
       toast({
         title: "Arquivo inválido",
@@ -324,7 +350,6 @@ export default function Ponto() {
       return;
     }
     
-    // Validate file size (max 10MB before compression)
     if (file.size > 10 * 1024 * 1024) {
       toast({
         title: "Arquivo muito grande",
@@ -351,7 +376,7 @@ export default function Ponto() {
 
   // Submit event (with photo from camera or upload)
   const submitEvent = async (useUploadedPhoto = false) => {
-    if (!nextEvent || !user?.id || !profile?.tenant_id) return;
+    if (!nextEvent || !effectiveProfileId || !profile?.tenant_id) return;
     
     const photoSource = useUploadedPhoto ? uploadedPhoto : capturedPhoto;
     
@@ -360,23 +385,19 @@ export default function Ponto() {
     try {
       let attachmentId: string | null = null;
       
-      // Only upload photo if we have one
       if (photoSource) {
         let blob: Blob;
         
         if (useUploadedPhoto && uploadedPhoto) {
-          // Compress uploaded file
           blob = await compressImage(uploadedPhoto);
         } else if (capturedPhoto) {
-          // Convert base64 to blob
           const response = await fetch(capturedPhoto);
           blob = await response.blob();
         } else {
           throw new Error("No photo available");
         }
         
-        // Upload photo
-        const fileName = `timeclock/${user.id}/${Date.now()}.jpg`;
+        const fileName = `timeclock/${effectiveProfileId}/${Date.now()}.jpg`;
         const { error: uploadError } = await supabase.storage
           .from('attachments')
           .upload(fileName, blob);
@@ -387,17 +408,16 @@ export default function Ponto() {
           .from('attachments')
           .getPublicUrl(fileName);
         
-        // Create attachment record
         const { data: attachment, error: attachmentError } = await supabase
           .from('attachments')
           .insert({
             tenant_id: profile.tenant_id,
             parent_type: 'timeclock',
-            parent_id: user.id,
+            parent_id: effectiveProfileId,
             attachment_type: 'TIMECLOCK_PHOTO',
             file_url: publicUrl,
             file_name: `ponto-${nextEvent.toLowerCase()}.jpg`,
-            uploaded_by: user.id,
+            uploaded_by: user?.id || effectiveProfileId,
           })
           .select()
           .single();
@@ -406,12 +426,11 @@ export default function Ponto() {
         attachmentId = attachment.id;
       }
       
-      // Create timeclock event
       const { error: eventError } = await supabase
         .from('timeclock_events')
         .insert({
           tenant_id: profile.tenant_id,
-          profile_id: user.id,
+          profile_id: effectiveProfileId,
           event_type: nextEvent,
           photo_attachment_id: attachmentId,
         });
@@ -420,9 +439,11 @@ export default function Ponto() {
       
       queryClient.invalidateQueries({ queryKey: ['timeclock_events'] });
       
+      const mechanicLabel = isPatio && selectedMechanicName ? ` para ${selectedMechanicName}` : "";
+      
       toast({
         title: "Ponto registrado!",
-        description: `${eventConfig[nextEvent].label} registrada às ${format(new Date(), "HH:mm")}${!photoSource ? " (sem foto)" : ""}`,
+        description: `${eventConfig[nextEvent].label} registrada às ${format(new Date(), "HH:mm")}${mechanicLabel}${!photoSource ? " (sem foto)" : ""}`,
       });
       
       stopCamera();
@@ -440,8 +461,19 @@ export default function Ponto() {
     }
   };
 
+  const handleSelectMechanic = (mechanicId: string, mechanicName: string) => {
+    setSelectedMechanicId(mechanicId);
+    setSelectedMechanicName(mechanicName);
+  };
 
-  if (isLoading) {
+  const handleBackToMechanicList = () => {
+    setSelectedMechanicId(null);
+    setSelectedMechanicName(null);
+    stopCamera();
+    clearUploadedPhoto();
+  };
+
+  if (isLoading && !isPatio) {
     return (
       <AppLayout title="Ponto Digital" subtitle="Controle de jornada">
         <div className="max-w-2xl mx-auto space-y-6">
@@ -452,9 +484,81 @@ export default function Ponto() {
     );
   }
 
+  // PATIO users: show mechanic selector first
+  if (isPatio && !selectedMechanicId) {
+    return (
+      <AppLayout title="Ponto Digital" subtitle="Selecione o mecânico">
+        <div className="max-w-2xl mx-auto space-y-6 animate-fade-in">
+          {/* Current Time */}
+          <Card className="bg-gradient-to-br from-primary/10 to-accent/10">
+            <CardContent className="py-8 text-center">
+              <p className="text-sm text-muted-foreground mb-2">
+                {format(currentTime, "EEEE, d 'de' MMMM 'de' yyyy", { locale: ptBR })}
+              </p>
+              <p className="font-display text-6xl font-bold tracking-tight">
+                {format(currentTime, "HH:mm:ss")}
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Mechanic Selector */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-display flex items-center gap-2">
+                <User className="h-5 w-5" />
+                Selecione o Mecânico
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {mechanics.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <AlertCircle className="h-10 w-10 mx-auto mb-3 opacity-50" />
+                  <p>Nenhum mecânico disponível.</p>
+                </div>
+              ) : (
+                <div className="grid gap-3">
+                  {mechanics.map((mechanic) => (
+                    <Button
+                      key={mechanic.id}
+                      variant="outline"
+                      className="w-full justify-start gap-3 h-auto py-4"
+                      onClick={() => handleSelectMechanic(mechanic.id, mechanic.full_name)}
+                    >
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
+                        {mechanic.full_name
+                          .split(" ")
+                          .map((n: string) => n[0])
+                          .join("")
+                          .slice(0, 2)
+                          .toUpperCase()}
+                      </div>
+                      <span className="font-medium text-base">{mechanic.full_name}</span>
+                    </Button>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </AppLayout>
+    );
+  }
+
   return (
-    <AppLayout title="Ponto Digital" subtitle="Controle de jornada">
+    <AppLayout title="Ponto Digital" subtitle={isPatio && selectedMechanicName ? `Registrando para: ${selectedMechanicName}` : "Controle de jornada"}>
       <div className="max-w-2xl mx-auto space-y-6 animate-fade-in">
+        {/* Back button for PATIO users */}
+        {isPatio && selectedMechanicId && (
+          <Button
+            variant="ghost"
+            className="gap-2"
+            onClick={handleBackToMechanicList}
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Trocar Mecânico
+          </Button>
+        )}
+
         {/* Current Time */}
         <Card className="bg-gradient-to-br from-primary/10 to-accent/10">
           <CardContent className="py-8 text-center">
@@ -465,6 +569,12 @@ export default function Ponto() {
               {format(currentTime, "HH:mm:ss")}
             </p>
             <div className="mt-4 flex items-center justify-center gap-4">
+              {isPatio && selectedMechanicName && (
+                <Badge variant="secondary" className="text-base px-4 py-1">
+                  <User className="h-4 w-4 mr-2" />
+                  {selectedMechanicName}
+                </Badge>
+              )}
               <Badge variant="outline" className="text-base px-4 py-1">
                 <Clock className="h-4 w-4 mr-2" />
                 {workedHours}h {workedMins}min trabalhadas
@@ -487,7 +597,9 @@ export default function Ponto() {
                 <CheckCircle className="h-16 w-16 text-success mx-auto mb-4" />
                 <h3 className="font-display text-xl font-semibold">Jornada Completa!</h3>
                 <p className="text-muted-foreground mt-2">
-                  Você já registrou todos os pontos de hoje.
+                  {isPatio && selectedMechanicName
+                    ? `${selectedMechanicName} já registrou todos os pontos de hoje.`
+                    : "Você já registrou todos os pontos de hoje."}
                 </p>
               </div>
             ) : !isCameraOpen ? (
@@ -648,7 +760,6 @@ export default function Ponto() {
           </DialogHeader>
 
           <div className="space-y-4 py-4">
-            {/* Upload Photo Option */}
             <div className="space-y-3">
               <input
                 ref={fileInputRef}
@@ -702,7 +813,6 @@ export default function Ponto() {
               )}
             </div>
 
-            {/* Info message */}
             {!uploadedPhotoPreview && (
               <p className="text-xs text-muted-foreground text-center">
                 É obrigatório enviar uma foto para registrar o ponto.
