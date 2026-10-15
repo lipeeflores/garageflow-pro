@@ -123,7 +123,8 @@ def test_filtro_de_dinheiro_troca_a_resposta_do_patio():
 
 def test_dinheiro_nao_pega_quilometragem():
     assert not core.vaza_dinheiro("O carro entrou com 145.000 km e meio tanque.")
-    assert core.vaza_dinheiro("orçamento aprovado")
+    assert not core.vaza_dinheiro("seu orçamento está aguardando aprovação; o link é este")
+    assert core.vaza_dinheiro("o orçamento ficou em R$ 450")
     assert core.vaza_dinheiro("450 reais")
 
 

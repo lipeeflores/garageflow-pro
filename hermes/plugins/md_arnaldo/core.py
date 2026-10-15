@@ -279,11 +279,13 @@ def neutralize_command(text: str) -> Optional[str]:
 # -- Parede do dinheiro na saida ---------------------------------------------
 
 # Valor em real, percentual e as palavras de dinheiro que nao podem sair para o patio.
+# A palavra "orcamento" sozinha NAO e vazamento (desde 16/10): o Arnaldo manda o link do orcamento
+# ao cliente e diz que a aprovacao esta pendente. O que vaza e o NUMERO (R$, reais, %).
 _DINHEIRO = re.compile(
     r"(r\$\s*\d)"
     r"|(\d[\d.,]*\s*(?:reais|contos|mil\s+reais))"
     r"|(\d[\d.,]*\s*%)"
-    r"|(\bmargem\b)|(\blucro\b)|(\bfaturamento\b)|(\bor[çc]amento\b)|(\bdesconto\b)",
+    r"|(\bmargem\b)|(\blucro\b)|(\bfaturamento\b)|(\bdesconto\b)",
     re.I,
 )
 
