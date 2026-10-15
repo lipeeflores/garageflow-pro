@@ -5,7 +5,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { atender } from "../_shared/arnaldo/handler.ts";
 
-const VERSAO = "a5-2026-10-15T18:05-03:00";
+const VERSAO = "a6-2026-10-15T18:29-03:00";
 
 Deno.serve((req) =>
   atender(req, {

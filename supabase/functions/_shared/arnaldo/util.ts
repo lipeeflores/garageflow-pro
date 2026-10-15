@@ -68,6 +68,27 @@ export function inteiro(args: Args, campo: string, opts: { obrig?: boolean; min?
   return n;
 }
 
+/** Número (aceita "12,50"). `valorMin` é exclusivo quando `positivo`. Arredonda para centavos. */
+export function dinheiro(v: unknown, campo: string, opts: { obrig?: boolean; positivo?: boolean } = {}): number | undefined {
+  const { obrig = true, positivo = true } = opts;
+  if (v === undefined || v === null || v === "") {
+    if (obrig) throw invalido(`Falta o campo "${campo}".`);
+    return undefined;
+  }
+  const n = typeof v === "number" ? v : typeof v === "string" ? Number(v.trim().replace(",", ".")) : NaN;
+  if (!Number.isFinite(n) || (positivo ? n <= 0 : n < 0) || n > 10_000_000) {
+    throw invalido(`O campo "${campo}" precisa ser um valor em reais ${positivo ? "maior que zero" : "válido"}.`);
+  }
+  return Math.round(n * 100) / 100;
+}
+
+export function booleano(args: Args, campo: string): boolean {
+  const v = args[campo];
+  if (v === true || v === "true") return true;
+  if (v === false || v === "false") return false;
+  throw invalido(`O campo "${campo}" precisa ser true ou false.`);
+}
+
 export function escolha<T extends string>(args: Args, campo: string, validos: readonly T[], obrig = true): T | undefined {
   const v = args[campo];
   if (v === undefined || v === null || v === "") {

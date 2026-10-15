@@ -22,6 +22,12 @@ import registrar_diagnostico from "./actions/registrar_diagnostico.ts";
 import adicionar_itens from "./actions/adicionar_itens.ts";
 import mover_etapa from "./actions/mover_etapa.ts";
 import atribuir from "./actions/atribuir.ts";
+import precificar_itens from "./actions/precificar_itens.ts";
+import enviar_orcamento from "./actions/enviar_orcamento.ts";
+import controle_qualidade from "./actions/controle_qualidade.ts";
+import registrar_pagamento from "./actions/registrar_pagamento.ts";
+import resumo_financeiro from "./actions/resumo_financeiro.ts";
+import contas_a_pagar from "./actions/contas_a_pagar.ts";
 
 export type Resultado =
   | { ok: true; dados: unknown }
@@ -49,6 +55,12 @@ export const ACOES: Record<string, Acao> = {
   adicionar_itens,
   mover_etapa,
   atribuir,
+  precificar_itens,
+  enviar_orcamento,
+  controle_qualidade,
+  registrar_pagamento,
+  resumo_financeiro,
+  contas_a_pagar,
 };
 
 export async function despachar(acao: string, args: unknown, ctx: Ctx): Promise<Resultado> {

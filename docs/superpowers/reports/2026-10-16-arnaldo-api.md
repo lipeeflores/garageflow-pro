@@ -4,32 +4,15 @@ Executor: Claude Sonnet 5.5. Tudo em `main`. Último commit da função: `01bd11
 
 ## Resumo
 
-- **A0 a A5 feitas e empurradas.** `npx vitest run src/test/arnaldo`: **94 testes verdes** em 5 arquivos.
-- **A função NÃO está publicada.** O curl de saúde ainda devolve `404 Requested function was not found` mais de 15 minutos depois do push (as outras funções do projeto respondem). O Lovable não pegou a `arnaldo-api` que chegou pelo GitHub. **O Lipe precisa pedir a publicação no chat do Lovable** (texto abaixo).
-- **A6 (P1, financeiro) NÃO foi feita**, de propósito: a regra era só depois de A5 no ar e verde, e A5 não está no ar.
-- Os passos 3 e 4 da A5 que dependem de produção (curl de saúde com a versão nova, POST sem token → 401) **não foram verificados**. O comportamento está coberto localmente por `handler.test.ts` (saúde sem token e sem tocar no banco; POST sem token ou com token errado ou sem token configurado → 401).
-
-## O que o Lipe precisa fazer agora
-
-Abrir o projeto no Lovable e pedir: *"Publique a edge function arnaldo-api que chegou pelo GitHub"*. Depois conferir:
-
-```
-curl -s "https://jodyrgwdpxrjlglepzjh.supabase.co/functions/v1/arnaldo-api?saude=1"
-```
-
-Esperado: `{"ok":true,"versao":"a5-2026-10-15T18:05-03:00"}` (ou a versão de um commit mais novo). Em seguida:
-
-```
-curl -s -o /dev/null -w "%{http_code}\n" -X POST "https://jodyrgwdpxrjlglepzjh.supabase.co/functions/v1/arnaldo-api" -H "content-type: application/json" -d "{}"
-```
-
-Esperado: `401` (e, com o token ainda não criado, qualquer POST dá 401: a porta fica fechada).
-
-Se o curl de saúde der `401` em vez de 200, o Lovable religou o `verify_jwt`: repetir com `-H "authorization: Bearer <VITE_SUPABASE_PUBLISHABLE_KEY do .env>"`.
+- **A0 a A6 feitas e empurradas para `main`.** `npx vitest run src/test/arnaldo`: **124 testes verdes** em 6 arquivos.
+- **Publicação (A0/A5) verificada pela sessão do servidor:** depois de o Lipe pedir no chat do Lovable, a função respondeu a saúde (`{"ok":true,"versao":"a5-2026-10-15T18:05-03:00"}`), `POST` sem token deu 401 e chamadas assinadas reais (`quem_sou`, `agenda_do_dia`) funcionaram, inclusive pelo Hermes de ponta a ponta. Os segredos já estão no Lovable e no servidor. Ou seja, os passos 3 e 4 da A5 estão cumpridos. Antes do pedido ao Lipe, o curl deu 404 por mais de 15 minutos: o Lovable **não publica sozinho** uma função nova vinda do GitHub; precisa do pedido no chat.
+- **A6 (P1) implementada**, 6 ações: `precificar_itens`, `enviar_orcamento`, `controle_qualidade`, `registrar_pagamento`, `resumo_financeiro`, `contas_a_pagar`. Cada hook foi lido antes (ver "A6" abaixo).
+- **Para o MCP expor as ferramentas P1, o servidor precisa de `ARNALDO_ENABLE_P1=1`** (o `tools.mjs` já filtra por essa variável). A sessão do servidor liga.
+- A6 só vale depois que o Lovable publicar o commit novo: conferir com o curl de saúde que a versão mudou (a `VERSAO` do `index.ts` é atualizada no commit da A6).
 
 ## Header anon é obrigatório?
 
-**Não deu para saber** (a função não está publicada, então não há resposta para testar). O `supabase/config.toml` tem `[functions.arnaldo-api] verify_jwt = false`. Se o Lovable respeitar, não é obrigatório; se sobrescrever, é. O MCP já manda `authorization: Bearer <anon>` de qualquer forma, então funciona nos dois casos.
+**Não foi testado sem o header.** O `config.toml` tem `verify_jwt = false` e a função foi publicada e atendida com sucesso; o MCP manda `authorization: Bearer <anon>` em toda chamada, então funciona nos dois casos. Se algum dia der 401 do gateway (antes de chegar na função), o `verify_jwt` foi religado pelo Lovable.
 
 ## Segredos que o Lipe cria no Lovable (Cloud → Secrets)
 
@@ -45,11 +28,22 @@ Sem `ARNALDO_API_TOKEN` configurado a função recusa tudo (401); sem `ARNALDO_C
 
 Também precisa existir no banco o tenant com `slug = 'md-mecanica'` (a função o resolve por esse slug a cada chamada; se faltar, toda ação dá `erro_interno`).
 
-## Ações implementadas (19 de 25)
+## Ações implementadas (25 de 25)
 
-P0 completo, 19 ações, todas com `reason` ignorado e dinheiro removido na API quando o papel não vê: `quem_sou`, `meus_dados`, `cadastrar_cliente_veiculo`, `status_do_carro`, `horarios_livres`, `agendar`, `meus_agendamentos`, `remarcar`, `cancelar_agendamento`, `agenda_do_dia`, `buscar`, `ver_os`, `abrir_os`, `registrar_checkin`, `anexar_foto`, `registrar_diagnostico`, `adicionar_itens`, `mover_etapa`, `atribuir`. (São 19; os demais itens do catálogo P1 ficaram de fora.)
+**P0, 19 ações** (todas com `reason` ignorado e dinheiro removido na API quando o papel não vê): `quem_sou`, `meus_dados`, `cadastrar_cliente_veiculo`, `status_do_carro`, `horarios_livres`, `agendar`, `meus_agendamentos`, `remarcar`, `cancelar_agendamento`, `agenda_do_dia`, `buscar`, `ver_os`, `abrir_os`, `registrar_checkin`, `anexar_foto`, `registrar_diagnostico`, `adicionar_itens`, `mover_etapa`, `atribuir`.
 
-**Ficaram de fora (A6, P1):** `precificar_itens`, `enviar_orcamento`, `controle_qualidade`, `registrar_pagamento`, `resumo_financeiro`, `contas_a_pagar`. Como o roteador devolve `acao_desconhecida` para elas, o MCP/SOUL não devem anunciá-las até a A6 existir.
+**P1, 6 ações, só `gestao` e `dono`** (pátio, cliente e `sistema` levam `sem_permissao` sem gravar nada, testado):
+
+| ação | como espelha o app |
+|---|---|
+| `precificar_itens` | `useUpsertItemPricing`: upsert em `work_order_pricing` com `total_price = preço × quantidade do item`, `unit_cost` nulo se não informado. Recalcula `work_orders.total_amount` (soma dos `total_price`). Lote validado antes de gravar; item de outra OS ou preço ≤ 0 derrubam o lote. OS FINALIZADO/CANCELADO → `etapa_invalida` |
+| `enviar_orcamento` | `BudgetQuickDialog`: todo item com `total_price > 0` (senão `dados_invalidos` listando os itens sem preço), grava `total_amount` e leva AGUARDANDO_ORCAMENTO → AGUARDANDO_APROVACAO. Devolve `link_orcamento` (se `ARNALDO_APP_URL` existir). Se já estiver em AGUARDANDO_APROVACAO, só devolve o link de novo |
+| `controle_qualidade` | `QualityControlDialog`: insere em `work_order_quality` (`manager_id` = ator, `APROVADO`/`DEVOLVIDO_AJUSTES`) e muda a etapa para PRONTO_PARA_RETIRADA ou AJUSTES. Só vale em EM_QUALIDADE; exige ator identificado |
+| `registrar_pagamento` | `useCreatePayment`: `payments` (`processed_by` = ator) + `financial_entries` RECEITA (`category` = rótulo da forma, `description` = "Pagamento OS XXXXXXXX"). Extras de segurança, que o app não tem: recusa (`conflito`) o mesmo valor+forma na mesma OS em até 2 minutos (retentativa do modelo) e desfaz o pagamento se o lançamento financeiro falhar. Devolve `total_pago`, `total_os` e `saldo` |
+| `resumo_financeiro` | `useFinancialData`: receita (`financial_entries` RECEITA por `entry_date`), formas de pagamento (por `paid_at`), OS finalizadas (por `created_at`, como o hook faz), ticket médio = receita / finalizadas, e `em_andamento` = soma de `total_amount` das OS em PRONTO_PARA_RETIRADA/APROVADO/EM_EXECUCAO/EM_QUALIDADE. Período máximo 366 dias |
+| `contas_a_pagar` | `useBills`: `listar` (PENDENTE+VENCIDO por padrão, por vencimento, com resumo pendente/vencido/fixas/flutuantes), `criar` (PENDENTE, FLUTUANTE por padrão), `pagar` (PAGO + `paid_at` + `paid_amount`, que é `valor` ou o valor da conta). Como no app, pagar uma conta **não** cria lançamento em `financial_entries` |
+
+Campos extras aceitos pela API e que o schema atual do MCP (`tools.mjs`) ainda não declara, caso a sessão do servidor queira expor: em `contas_a_pagar` `categoria` (FIXA/FLUTUANTE), `status`, `fornecedor`, `observacoes`, `recorrente`, `dia_recorrencia`. Hoje o MCP só manda `acao`, `conta_id`, `descricao`, `valor`, `vencimento`, que bastam.
 
 ## Estrutura
 
@@ -63,7 +57,7 @@ P0 completo, 19 ações, todas com `reason` ignorado e dinheiro removido na API 
 
 1. **Código de erro `conflito`**: o plano usa `conflito` nas ações (`cadastrar_cliente_veiculo` com placa de outro cliente; segundo `registrar_checkin`), mas a lista do contrato HTTP não o inclui. Implementei `conflito` como o texto do plano manda. O MCP repassa a resposta inteira, então não quebra nada, mas a lista de códigos do contrato deveria ganhar `conflito`.
 2. **`dados` como lista**: `meus_agendamentos` e `agenda_do_dia` devolvem **array** em `dados` (como o catálogo diz `[...]`), apesar de o contrato falar em "objeto". Cada item de `agenda_do_dia` leva `status` (AGENDADO/CHEGOU/NAO_COMPARECEU), para misturar os faltosos dos 3 dias anteriores.
-3. **Papel `sistema`** (cron): o catálogo só o lista em `quem_sou`. Liberei também, só para leitura, `status_do_carro`, `horarios_livres`, `agenda_do_dia`, `buscar` e `ver_os`. Nenhuma ação de escrita aceita `sistema` (as que exigem ator ficam vetadas, como no plano).
+3. **Papel `sistema`** (cron): o catálogo só o lista em `quem_sou`. Liberei também, só para leitura, `status_do_carro`, `horarios_livres`, `agenda_do_dia`, `buscar` e `ver_os`. Nenhuma ação de escrita aceita `sistema`, nem as P1 (as que exigem ator ficam vetadas, como no plano).
 4. **Caminho da foto em `anexar_foto`**: usei o formato que o app já usa (`work-orders/<os_id>/<tipo em minúsculas>/<ts>-<id curto>.<ext>`, igual ao `PhotoUpload.tsx`) e não `${tenant}/${os_id}/${uuid}`, como o plano mandou conferir. A tabela `attachments` não tem coluna de legenda: `legenda` vira um evento `NOTA_ARNALDO` na OS.
 5. **Telefone gravado em `customers.phone_number`**: DDD + número, sem o `55` (11 dígitos), que é o formato que o app já assume (`PendingTasksAlert` acrescenta o 55). A busca normaliza em JS os dois lados, então telefones salvos em qualquer formato casam.
 6. **`registrar_diagnostico`** a partir de CHECKIN_CONCLUIDO passa por EM_DIAGNOSTICO e chega em AGUARDANDO_ORCAMENTO (dois updates, dois eventos). Fora dessas etapas, grava o laudo e não mexe na etapa.
@@ -74,6 +68,6 @@ P0 completo, 19 ações, todas com `reason` ignorado e dinheiro removido na API 
 ## Ambiente e riscos
 
 - `npm ci` falha neste repo: `package-lock.json` está fora de sincronia com o `package.json`. Usei `npm install --no-package-lock`; nenhum lockfile foi alterado.
-- `deno` não existe nesta máquina, então a função **não foi checada nem rodada em Deno**; só o mesmo código em Node/vitest. Riscos específicos de Deno: o Lovable precisa empacotar `../_shared/arnaldo/*` (padrão `_shared` do Supabase) e o `import` de esm.sh. Se a publicação der erro de build, o log do Lovable dirá qual.
+- `deno` não existe nesta máquina: o código foi testado em Node/vitest. Em produção o Lovable empacotou `../_shared/arnaldo/*` e a A5 rodou (confirmado pela sessão do servidor).
 - Esta pasta é compartilhada com a outra sessão (Parte B): os commits de `hermes/` estão intercalados com os meus em `main`. Só dei `git add` nos meus caminhos.
 - Nada foi gravado nem apagado no banco de produção (não há acesso); os testes usam só o `fakeDb`.
