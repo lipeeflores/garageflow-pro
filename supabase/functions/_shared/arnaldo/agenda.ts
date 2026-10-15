@@ -43,7 +43,7 @@ const aMin = (t: string) => { const [h, m] = t.split(":").map(Number); return h 
 const p2 = (n: number) => String(n).padStart(2, "0");
 
 /** Aceita ISO com offset ou só a data (YYYY-MM-DD = meia-noite local). Devolve epoch ms. */
-function parse(iso: string): number {
+export function parseIso(iso: string): number {
   const s = /^\d{4}-\d{2}-\d{2}$/.test(iso) ? `${iso}T00:00:00-03:00` : iso;
   return new Date(s).getTime();
 }
@@ -51,7 +51,8 @@ function parse(iso: string): number {
 /** epoch ms de um (data local, minutos desde 00:00) de São Paulo */
 const epochLocal = (y: number, m: number, d: number, min: number) => Date.UTC(y, m, d, 0, min) + OFFSET_MS;
 
-function formatar(ms: number): string {
+/** epoch ms → `YYYY-MM-DDTHH:MM:00-03:00` (minuto local de São Paulo) */
+export function formatarLocal(ms: number): string {
   const d = new Date(ms - OFFSET_MS);
   return `${d.getUTCFullYear()}-${p2(d.getUTCMonth() + 1)}-${p2(d.getUTCDate())}T${p2(d.getUTCHours())}:${p2(d.getUTCMinutes())}:00-03:00`;
 }
@@ -59,13 +60,13 @@ function formatar(ms: number): string {
 export function horariosLivres(
   regra: RegraAgenda, deISO: string, ateISO: string, ocupados: string[], agoraISO: string,
 ): { inicio: string; vagas: number }[] {
-  const de = parse(deISO), ate = parse(ateISO), agora = parse(agoraISO);
+  const de = parseIso(deISO), ate = parseIso(ateISO), agora = parseIso(agoraISO);
   if (![de, ate, agora].every(Number.isFinite) || ate <= de) return [];
   const minimo = agora + regra.antecedencia_min * MIN_MS;
 
   const contagem = new Map<number, number>();
   for (const o of ocupados) {
-    const t = Math.floor(parse(o) / MIN_MS);
+    const t = Math.floor(parseIso(o) / MIN_MS);
     if (Number.isFinite(t)) contagem.set(t, (contagem.get(t) ?? 0) + 1);
   }
 
@@ -90,7 +91,7 @@ export function horariosLivres(
         const ms = epochLocal(y, m, d, t);
         if (ms < de || ms >= ate || ms < minimo) continue;
         const vagas = regra.carros_por_horario - (contagem.get(ms / MIN_MS) ?? 0);
-        if (vagas > 0) out.push({ inicio: formatar(ms), vagas });
+        if (vagas > 0) out.push({ inicio: formatarLocal(ms), vagas });
       }
     }
   }
