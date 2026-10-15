@@ -139,6 +139,24 @@ def _paused() -> Optional[str]:
         return "pausa de manutencao"
 
 
+
+def _pausa_libera(event: Any) -> bool:
+    """Exceção da pausa: chats listados em <perfil>/PAUSA_EXCETO (um JID por linha) passam.
+
+    15/10/2026: o Lipe quis o Arnaldo ativo SÓ no grupo MD Gerência enquanto o resto segue pausado.
+    """
+    try:
+        chat = str(getattr(getattr(event, "source", None), "chat_id", "") or "").strip()
+        if not chat:
+            return False
+        with open(os.path.join(_home(), "PAUSA_EXCETO"), encoding="utf-8") as fh:
+            liberados = {linha.strip() for linha in fh if linha.strip() and not linha.startswith("#")}
+        return chat in liberados
+    except FileNotFoundError:
+        return False
+    except Exception:
+        return False
+
 # ── Espera do recado picado ──────────────────────────────────────────────────
 # O Hermes só junta mensagens enquanto o agente está OCUPADO. Aqui a conversa espera
 # o silêncio antes de virar turno (espera.py, idêntico ao da Isabelle). Até 08/10 o
@@ -356,11 +374,11 @@ def on_pre_gateway_dispatch(event: Any = None, gateway: Any = None, session_stor
             _guard_gateway(gateway)
         # Recado que a própria espera juntou: passa direto (só não fura a pausa).
         if espera.ja_liberado(event):
-            motivo = _paused()
+            motivo = None if _pausa_libera(event) else _paused()
             return {"action": "skip", "reason": f"arnaldo: {motivo}"} if motivo else None
 
         source = getattr(event, "source", None)
-        motivo = _paused()
+        motivo = None if _pausa_libera(event) else _paused()
         if motivo:
             logger.warning("arnaldo PAUSA (%s): de=%s texto=%.160s", motivo,
                            getattr(source, "user_id", None), getattr(event, "text", "") or "[sem texto]")

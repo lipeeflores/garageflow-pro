@@ -7,9 +7,26 @@
   },
   "_grupos": "Em grupo a muralha vale pela PLATEIA, nao por quem perguntou: a resposta e lida por todo mundo que esta la dentro. So sai valor em grupo com 'financeiro': true. Grupo que nao estiver aqui = sigilo ligado. A chave e o JID (termina em @g.us).",
   "equipe": [
-    { "nome": "Simone", "telefone": "", "papel": "gestao" },
-    { "nome": "Marcio", "telefone": "", "papel": "dono" },
-    { "nome": "Carlos Felipe", "telefone": "5567999090751", "papel": "dono" }
+    {
+      "nome": "Simone",
+      "telefone": "",
+      "papel": "gestao"
+    },
+    {
+      "nome": "Marcio",
+      "telefone": "",
+      "papel": "dono"
+    },
+    {
+      "nome": "Carlos Felipe",
+      "telefone": "5567999090751",
+      "papel": "dono"
+    }
   ],
-  "grupos": {}
+  "grupos": {
+    "120363431457941743@g.us": {
+      "nome": "MD Gerência",
+      "financeiro": true
+    }
+  }
 }
