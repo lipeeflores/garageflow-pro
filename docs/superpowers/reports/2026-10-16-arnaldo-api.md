@@ -8,7 +8,7 @@ Executor: Claude Sonnet 5.5. Tudo em `main`. Último commit da função: `01bd11
 - **Publicação (A0/A5) verificada pela sessão do servidor:** depois de o Lipe pedir no chat do Lovable, a função respondeu a saúde (`{"ok":true,"versao":"a5-2026-10-15T18:05-03:00"}`), `POST` sem token deu 401 e chamadas assinadas reais (`quem_sou`, `agenda_do_dia`) funcionaram, inclusive pelo Hermes de ponta a ponta. Os segredos já estão no Lovable e no servidor. Ou seja, os passos 3 e 4 da A5 estão cumpridos. Antes do pedido ao Lipe, o curl deu 404 por mais de 15 minutos: o Lovable **não publica sozinho** uma função nova vinda do GitHub; precisa do pedido no chat.
 - **A6 (P1) implementada**, 6 ações: `precificar_itens`, `enviar_orcamento`, `controle_qualidade`, `registrar_pagamento`, `resumo_financeiro`, `contas_a_pagar`. Cada hook foi lido antes (ver "A6" abaixo).
 - **Para o MCP expor as ferramentas P1, o servidor precisa de `ARNALDO_ENABLE_P1=1`** (o `tools.mjs` já filtra por essa variável). A sessão do servidor liga.
-- A6 só vale depois que o Lovable publicar o commit novo: conferir com o curl de saúde que a versão mudou (a `VERSAO` do `index.ts` é atualizada no commit da A6).
+- **Pendente: publicar o commit `b123d4b` (A6).** A função em produção ainda é a `a5-2026-10-15T18:05-03:00`; o curl de saúde seguiu na a5 por 12 minutos depois do push, porque o Lovable só publica quando o Lipe pede no chat dele. Quando publicar, o curl de saúde passa a devolver `a6-2026-10-15T18:29-03:00`. Enquanto isso, o MCP deve ficar sem `ARNALDO_ENABLE_P1=1`: as 6 ações P1 devolveriam `acao_desconhecida`.
 
 ## Header anon é obrigatório?
 
