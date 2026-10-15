@@ -1,0 +1,15 @@
+{
+  "name": "oficina-mcp",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "MCP server que expõe o sistema da MD Mecânica (garageflow, edge function arnaldo-api) ao Arnaldo (Hermes)",
+  "main": "server.mjs",
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node --test test/*.test.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.17.0"
+  }
+}
