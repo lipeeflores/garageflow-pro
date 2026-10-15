@@ -1,0 +1,15 @@
+{
+  "_leia": "Quem e quem na MD Mecanica, pelo numero do WhatsApp. O Arnaldo le este arquivo a cada turno (recarrega sozinho quando ele muda). Papeis: dono, gestao, patio. Quem NAO estiver aqui e tratado como CLIENTE, e cliente nunca ve valor. Telefone: so digitos, com 55 e DDD (ex.: 5547999990001).",
+  "_papeis": {
+    "dono": "ve tudo, inclusive valores, margem e faturamento",
+    "gestao": "financeiro/administrativo: ve tudo, inclusive valores",
+    "patio": "mecanico/ajudante: ve servico, peca e prazo. NUNCA ve valor"
+  },
+  "_grupos": "Em grupo a muralha vale pela PLATEIA, nao por quem perguntou: a resposta e lida por todo mundo que esta la dentro. So sai valor em grupo com 'financeiro': true. Grupo que nao estiver aqui = sigilo ligado. A chave e o JID (termina em @g.us).",
+  "equipe": [
+    { "nome": "Simone", "telefone": "", "papel": "gestao" },
+    { "nome": "Marcio", "telefone": "", "papel": "dono" },
+    { "nome": "Carlos Felipe", "telefone": "5567999090751", "papel": "dono" }
+  ],
+  "grupos": {}
+}

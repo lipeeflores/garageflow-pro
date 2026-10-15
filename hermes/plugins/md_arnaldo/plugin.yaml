@@ -1,0 +1,11 @@
+name: md_arnaldo
+version: 1.0.0
+description: "Blindagem do Arnaldo (MD Mecânica): papel por número, muralha de sigilo financeiro, debounce do WhatsApp e trava de saída."
+author: DL Enterprise
+kind: hooks
+provides_hooks:
+  - pre_llm_call
+  - pre_gateway_dispatch
+  - pre_tool_call
+  - transform_llm_output
+  - post_api_request
