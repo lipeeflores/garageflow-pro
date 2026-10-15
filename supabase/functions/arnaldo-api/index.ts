@@ -1,18 +1,16 @@
-const cors = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-arnaldo-token",
-};
-const VERSAO = "a0-2026-10-15";
+// Porta do Arnaldo (agente Hermes da MD Mecânica) para o banco do garageflow.
+// Este é o ÚNICO arquivo que importa de esm.sh. Toda a regra mora em ../_shared/arnaldo/ (testada com vitest).
+//
+// Segredos (Lovable → Cloud → Secrets): ARNALDO_API_TOKEN, ARNALDO_CALLER_SECRET, ARNALDO_APP_URL.
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { atender } from "../_shared/arnaldo/handler.ts";
 
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
-  const url = new URL(req.url);
-  if (req.method === "GET" && url.searchParams.get("saude") === "1") {
-    return new Response(JSON.stringify({ ok: true, versao: VERSAO }), {
-      headers: { ...cors, "Content-Type": "application/json" },
-    });
-  }
-  return new Response(JSON.stringify({ ok: false, erro: "acao_desconhecida" }), {
-    status: 200, headers: { ...cors, "Content-Type": "application/json" },
-  });
-});
+const VERSAO = "a5-2026-10-15T18:05-03:00";
+
+Deno.serve((req) =>
+  atender(req, {
+    env: (nome) => Deno.env.get(nome),
+    db: () => createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!),
+    versao: VERSAO,
+  })
+);
