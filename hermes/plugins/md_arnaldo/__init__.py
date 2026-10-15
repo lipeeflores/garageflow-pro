@@ -8,6 +8,8 @@ Habilitado SOMENTE em profiles/arnaldo-md-mecanica/config.yaml (plugins.enabled)
 - pre_tool_call: só leitura + MCP `oficina` passam; a chamada do MCP leva o chamador assinado (HMAC).
 - transform_llm_output: tira markdown que o WhatsApp mostraria cru e barra valor/margem
   quando quem fala é do pátio.
+- adapter.handle_message (embrulho): mensagem digitada pela oficina no celular (whatsapp_from_owner)
+  nunca vira turno e faz o Arnaldo sair daquela conversa por 4 h (ou até a virada do dia).
 - post_api_request + trava de saída no adapter: só sai no WhatsApp o texto que o modelo
   escreveu (erro do gateway, "reiniciando", aviso de provedor: barrado e auditado).
 """
@@ -201,11 +203,111 @@ def _fake_ok():
         return None
 
 
+# ── Humano assumiu ───────────────────────────────────────────────────────────
+# Mensagem digitada pelo celular da oficina (WHATSAPP_FORWARD_OWNER_MESSAGES=true) chega com
+# metadata["whatsapp_from_owner"]. NUNCA vira turno: registra que um humano assumiu o chat e
+# descarta. Enquanto ele estiver no controle, as mensagens do cliente também são descartadas
+# (e guardadas em humano-feed.jsonl). O filtro mora no adapter.handle_message porque a mensagem
+# que chega com turno em andamento vai para a fila e NÃO passa por pre_gateway_dispatch (13/10).
+_humano_lock = threading.Lock()
+_humano_estado: Optional[dict] = None   # carregado do arquivo no primeiro uso
+_humano_arquivo_estado = ""
+
+
+def _humano_reset_para_teste() -> None:
+    global _humano_estado
+    _humano_estado = None
+
+
+def _arquivo_humano(nome: str) -> str:
+    return os.path.join(_home(), nome)
+
+
+def _humano_do_dono(event: Any) -> bool:
+    md = getattr(event, "metadata", None)
+    return isinstance(md, dict) and bool(md.get("whatsapp_from_owner"))
+
+
+def _chave_do_chat(source: Any) -> str:
+    """Telefone do chat (quem é o cliente), pelo chat_id e seus apelidos. Nunca o user_id: na
+    mensagem do dono o user_id é o do celular da oficina."""
+    chat = str(getattr(source, "chat_id", "") or "")
+    phone = core.phone_from_candidates([chat, *_aliases(chat)]) if chat else None
+    return phone or chat
+
+
+def _humano_auditar(tipo: str, chat_id: Any, extra: Optional[dict] = None) -> None:
+    logger.warning("arnaldo %s: chat=%s", tipo, chat_id)
+    try:
+        linha = {"ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "tipo": tipo, "chat": str(chat_id or "")[:60]}
+        linha.update(extra or {})
+        with open(_arquivo_humano("humano-auditoria.jsonl"), "a", encoding="utf-8") as fh:
+            fh.write(json.dumps(linha, ensure_ascii=False) + "\n")
+    except Exception:
+        pass
+
+
+def _humano_feed(chat_id: Any, texto: str) -> None:
+    try:
+        linha = {"ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "chat": str(chat_id or "")[:60], "texto": (texto or "")[:2000]}
+        with open(_arquivo_humano("humano-feed.jsonl"), "a", encoding="utf-8") as fh:
+            fh.write(json.dumps(linha, ensure_ascii=False) + "\n")
+    except Exception:
+        pass
+
+
+def _humano_deve_descartar(event: Any) -> bool:
+    """True quando a mensagem NÃO pode virar turno (dono digitou, ou humano no controle)."""
+    global _humano_estado
+    source = getattr(event, "source", None)
+    if "whatsapp" not in str(getattr(getattr(source, "platform", None), "value", getattr(source, "platform", ""))).lower():
+        return False
+    if getattr(source, "chat_type", "dm") != "dm":
+        return False
+    chave = _chave_do_chat(source)
+    agora = time.time()
+    with _humano_lock:
+        if _humano_estado is None:
+            _humano_estado = core.carregar_estado(_arquivo_humano("humano-assumiu.json"))
+        if _humano_do_dono(event):
+            core.registrar_humano(_humano_estado, chave, agora)
+            try:
+                core.gravar_estado(_arquivo_humano("humano-assumiu.json"), _humano_estado)
+            except Exception as exc:
+                logger.warning("humano-assumiu.json não gravou (vale só até reiniciar): %s", exc)
+            quem = "dono"
+        else:
+            quem = ""
+            em_controle = core.humano_no_controle(_humano_estado, chave, agora, core.inicio_do_dia_local(agora))
+    if quem:
+        _humano_auditar("humano_assumiu", getattr(source, "chat_id", ""), {"chars": len(getattr(event, "text", "") or "")})
+        return True
+    if not em_controle:
+        return False
+    if core.papel_de(chave, _equipe()) != core.CLIENTE:
+        return False  # equipe falando com o Arnaldo pelo próprio número é outra conversa
+    texto = getattr(event, "text", "") or "[mídia]"
+    _humano_auditar("silencio_humano", getattr(source, "chat_id", ""))
+    _humano_feed(getattr(source, "chat_id", ""), texto)
+    return True
+
+
 def _guard_adapter(adapter: Any) -> None:
     """Embrulha o adapter do WhatsApp (idempotente): só texto aprovado sai."""
     if adapter is None or getattr(adapter, "_arnaldo_guarded", False):
         return
     orig_send = adapter.send
+    orig_handle = getattr(adapter, "handle_message", None)
+
+    async def handle_message(event, *args, **kw):
+        try:
+            if _humano_deve_descartar(event):
+                return None
+        except Exception as exc:
+            logger.warning("filtro de humano falhou: %s", exc)
+            if _humano_do_dono(event):
+                return None  # mensagem do dono NUNCA vira turno, nem com o filtro quebrado
+        return await orig_handle(event, *args, **kw)
 
     async def send(chat_id, content, reply_to=None, metadata=None, **kw):
         if not core.outbound_allowed(content, _approved_texts()):
@@ -228,6 +330,8 @@ def _guard_adapter(adapter: Any) -> None:
         return wrapped
 
     adapter.send = send
+    if orig_handle is not None:
+        adapter.handle_message = handle_message
     for name in ("edit_message", "send_poll", "send_clarify", "send_location"):
         if hasattr(adapter, name):
             setattr(adapter, name, drop)

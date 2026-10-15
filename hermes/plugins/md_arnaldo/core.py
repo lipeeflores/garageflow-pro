@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import json
+import os
 import re
 import time
 import unicodedata
@@ -355,6 +357,50 @@ def decide_tool_call(
     novos.pop("caller", None)  # nunca confiar no que o modelo mandou
     novos["caller"] = caller_envelope(identity, session_id, secret, now_ms)
     return {"action": "modify", "args": novos}
+
+
+# -- Humano assumiu -----------------------------------------------------------
+# Quando alguem da oficina digita pelo celular num chat de cliente, o Arnaldo sai da conversa.
+# Nao existe comando de liberar: o que ela digitar ali chega ao cliente, entao a conversa volta
+# sozinha apos HUMANO_TTL_S sem ela digitar, ou na virada do dia (meia-noite de Brasilia).
+
+HUMANO_TTL_S = 4 * 3600
+_BRT_S = 3 * 3600  # Brasil sem horario de verao desde 2019: offset fixo -03:00
+
+
+def inicio_do_dia_local(agora: float) -> float:
+    """Epoch da ultima meia-noite de Brasilia (<= agora)."""
+    return ((agora - _BRT_S) // 86400) * 86400 + _BRT_S
+
+
+def registrar_humano(estado: dict, chat_id: str, agora: float) -> dict:
+    estado[chat_id] = agora
+    return estado
+
+
+def humano_no_controle(estado: dict, chat_id: str, agora: float, inicio_do_dia: float) -> bool:
+    t = (estado or {}).get(chat_id)
+    if t is None:
+        return False
+    return (agora - t) < HUMANO_TTL_S and t >= inicio_do_dia
+
+
+def carregar_estado(caminho: str) -> dict:
+    """Le {chat: epoch}. Arquivo ausente ou corrompido => vazio (o Arnaldo atende)."""
+    try:
+        with open(caminho, encoding="utf-8") as fh:
+            dados = json.load(fh)
+        return {str(k): float(v) for k, v in dados.items()} if isinstance(dados, dict) else {}
+    except Exception:
+        return {}
+
+
+def gravar_estado(caminho: str, estado: dict) -> None:
+    """Gravacao atomica: arquivo tmp + os.replace."""
+    tmp = f"{caminho}.{os.getpid()}.tmp"
+    with open(tmp, "w", encoding="utf-8") as fh:
+        json.dump(estado, fh)
+    os.replace(tmp, caminho)
 
 
 # -- Grupo --------------------------------------------------------------------
