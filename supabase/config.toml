@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.send-notification-email]
 verify_jwt = false
+
+[functions.arnaldo-api]
+verify_jwt = false
