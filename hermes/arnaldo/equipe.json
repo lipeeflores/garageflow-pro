@@ -10,23 +10,19 @@
     {
       "nome": "Simone",
       "telefone": "",
-      "papel": "gestao"
+      "papel": "dono"
     },
     {
       "nome": "Marcio",
       "telefone": "",
-      "papel": "dono"
-    },
-    {
-      "nome": "Carlos Felipe",
-      "telefone": "5567999090751",
       "papel": "dono"
     }
   ],
   "grupos": {
     "120363431457941743@g.us": {
       "nome": "MD Gerência",
-      "financeiro": true
+      "financeiro": true,
+      "responder_tudo": true
     }
   }
 }
