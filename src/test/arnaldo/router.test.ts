@@ -1,54 +1,12 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { FakeDb } from "./fakeDb";
+import type { FakeDb } from "./fakeDb";
+import { T, AGORA, FONE_A, FONE_SIMONE, FONE_MECANICO, NAO_ACHEI, TERCA_9, semear, mkCtx } from "./fixtures";
 import { despachar, ACOES } from "../../../supabase/functions/_shared/arnaldo/router";
 import { quemChama, type Ctx } from "../../../supabase/functions/_shared/arnaldo/db";
 import type { Papel } from "../../../supabase/functions/_shared/arnaldo/roles";
 
-const T = "tenant-1";
-const AGORA = new Date("2026-10-19T08:00:00-03:00"); // segunda-feira
-
-const FONE_A = "5547984889108"; // cliente A
-const FONE_SIMONE = "5547999990001";
-const FONE_MECANICO = "5547999990002";
-const NAO_ACHEI = "Não achei esse carro no cadastro deste número.";
-const TERCA_9 = "2026-10-20T09:00:00-03:00";
-
 let db: FakeDb;
-
-function semear() {
-  return new FakeDb(
-    {
-      tenants: [{ id: T, slug: "md-mecanica", settings: {} }],
-      profiles: [
-        { id: "u-simone", tenant_id: T, full_name: "Simone", phone: "(47) 99999-0001", is_active: true },
-        { id: "u-mec", tenant_id: T, full_name: "Joao Mecanico", phone: "47 99999-0002", is_active: true },
-        { id: "u-joana", tenant_id: T, full_name: "Joana Mecanica", phone: null, is_active: true },
-        { id: "u-off", tenant_id: T, full_name: "Ex Gerente", phone: "47 99999-0003", is_active: false },
-      ],
-      user_roles: [
-        { user_id: "u-simone", tenant_id: T, role: "MANAGER" },
-        { user_id: "u-mec", tenant_id: T, role: "MECHANIC" },
-        { user_id: "u-joana", tenant_id: T, role: "MECHANIC" },
-        { user_id: "u-off", tenant_id: T, role: "MANAGER" },
-      ],
-      customers: [
-        { id: "c-a", tenant_id: T, full_name: "Ana Cliente", phone_number: "(47) 98488-9108" },
-        { id: "c-b", tenant_id: T, full_name: "Bruno Cliente", phone_number: "47911112222" },
-      ],
-      vehicles: [
-        { id: "v-a", tenant_id: T, customer_id: "c-a", plate: "ABC-1D23", make: "Fiat", model: "Uno", year: 2015, color: "prata" },
-        { id: "v-b", tenant_id: T, customer_id: "c-b", plate: "XYZ9K88", make: "VW", model: "Gol" },
-      ],
-      work_orders: [],
-      appointments: [],
-    },
-    { customers: [["tenant_id", "phone_number"]], vehicles: [["tenant_id", "plate"]] },
-  );
-}
-
-function ctx(papel: Papel, telefone: string | null, atorId: string | null = null): Ctx {
-  return { db, tenantId: T, papel, atorId, telefone, agora: AGORA, appPublicUrl: "https://app.example.com", tenantSettings: {} };
-}
+const ctx = (papel: Papel, telefone: string | null, atorId: string | null = null): Ctx => mkCtx(db, papel, telefone, atorId);
 const cliente = (fone = FONE_A) => ctx("cliente", fone);
 const gestao = () => ctx("gestao", FONE_SIMONE, "u-simone");
 const patio = () => ctx("patio", FONE_MECANICO, "u-mec");

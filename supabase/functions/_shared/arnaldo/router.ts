@@ -13,6 +13,15 @@ import meus_agendamentos from "./actions/meus_agendamentos.ts";
 import remarcar from "./actions/remarcar.ts";
 import cancelar_agendamento from "./actions/cancelar_agendamento.ts";
 import agenda_do_dia from "./actions/agenda_do_dia.ts";
+import buscar from "./actions/buscar.ts";
+import ver_os from "./actions/ver_os.ts";
+import abrir_os from "./actions/abrir_os.ts";
+import registrar_checkin from "./actions/registrar_checkin.ts";
+import anexar_foto from "./actions/anexar_foto.ts";
+import registrar_diagnostico from "./actions/registrar_diagnostico.ts";
+import adicionar_itens from "./actions/adicionar_itens.ts";
+import mover_etapa from "./actions/mover_etapa.ts";
+import atribuir from "./actions/atribuir.ts";
 
 export type Resultado =
   | { ok: true; dados: unknown }
@@ -31,6 +40,15 @@ export const ACOES: Record<string, Acao> = {
   remarcar,
   cancelar_agendamento,
   agenda_do_dia,
+  buscar,
+  ver_os,
+  abrir_os,
+  registrar_checkin,
+  anexar_foto,
+  registrar_diagnostico,
+  adicionar_itens,
+  mover_etapa,
+  atribuir,
 };
 
 export async function despachar(acao: string, args: unknown, ctx: Ctx): Promise<Resultado> {
