@@ -5,7 +5,7 @@ Habilitado SOMENTE em profiles/arnaldo-md-mecanica/config.yaml (plugins.enabled)
 - pre_gateway_dispatch: pausa de manutenção, silêncio em grupo, DEBOUNCE (30s cliente /
   4s equipe) e neutralização de comandos "/".
 - pre_llm_call: injeta data/hora e QUEM fala (pelo número) + a muralha de sigilo financeiro.
-- pre_tool_call: Arnaldo ainda não tem ferramentas de negócio; só leitura passa.
+- pre_tool_call: só leitura + MCP `oficina` passam; a chamada do MCP leva o chamador assinado (HMAC).
 - transform_llm_output: tira markdown que o WhatsApp mostraria cru e barra valor/margem
   quando quem fala é do pátio.
 - post_api_request + trava de saída no adapter: só sai no WhatsApp o texto que o modelo
@@ -110,7 +110,10 @@ def _identity_for_session(session_id: str) -> Optional[str]:
 def _quem_e_onde(session_id: str) -> tuple:
     """(telefone de quem fala, jid do grupo ou None). A plateia importa tanto quanto o falante."""
     row = _session_row(session_id) or ("cli", None, None, None)
-    identity = core.resolve_identity(row[0], row[1], row[2], row[3], _aliases)
+    identity = core.resolve_identity(
+        row[0], row[1], row[2], row[3], _aliases,
+        os.environ.get("ARNALDO_TEST_MODE") == "1", os.environ.get("ARNALDO_TEST_CALLER") or None,
+    )
     return identity, core.grupo_from_session_key(row[1])
 
 
@@ -321,7 +324,11 @@ def on_pre_llm_call(session_id: str = "", platform: str = "", user_message: Any 
 
 def on_pre_tool_call(tool_name: str = "", args: Any = None, session_id: str = "", **_: Any):
     try:
-        return core.decide_tool_call(tool_name, _identity_for_session(session_id))
+        identity = _identity_for_session(session_id)
+        return core.decide_tool_call(
+            tool_name, args if isinstance(args, dict) else {}, session_id, identity,
+            core.papel_de(identity, _equipe()), os.environ.get("ARNALDO_CALLER_SECRET", ""),
+        )
     except Exception as exc:
         logger.warning("pre_tool_call falhou: %s", exc)
         return {"action": "block", "message": "Falha ao validar a ação; nada foi executado."}

@@ -1,14 +1,17 @@
 """Pure decision logic for the md_arnaldo plugin (no Hermes imports, unit-testable)."""
 from __future__ import annotations
 
+import hashlib
+import hmac
 import re
+import time
 import unicodedata
 from typing import Callable, Iterable, Optional
 
 SYSTEM = "SYSTEM"
 
-# Hermes built-ins that only read. Arnaldo has no business tools yet (the MD Mecanica
-# system is not wired), so anything else is blocked on purpose.
+# Hermes built-ins that only read. Tudo que e de negocio vem do MCP `oficina`
+# (prefixo abaixo); qualquer outra ferramenta e bloqueada de proposito.
 SAFE_BUILTINS = frozenset({"tool_search", "tool_describe", "skills_list", "skill_view", "vision_analyze"})
 
 # Papeis. A parede do dinheiro separa DONO/GESTAO (ve tudo) de PATIO (nunca ve valor).
@@ -62,8 +65,14 @@ def resolve_identity(
     user_id: Optional[str],
     chat_id: Optional[str],
     expand_aliases: Callable[[str], Iterable[str]],
+    test_mode: bool = False,
+    test_caller: Optional[str] = None,
 ) -> Optional[str]:
-    """Mapeia a sessao para QUEM fala. Nunca adivinha."""
+    """Mapeia a sessao para QUEM fala. Nunca adivinha.
+
+    Modo de teste (``ARNALDO_TEST_MODE=1``): so vale em sessao ``cli`` (use ``--source cli``; ``-q``
+    sozinho vira sessao ``oneshot`` e ignora a variavel) e a identidade vem de ``ARNALDO_TEST_CALLER``.
+    """
     if source == "whatsapp":
         phone = phone_from_session_key(session_key)
         if phone:
@@ -76,6 +85,8 @@ def resolve_identity(
         return None
     if source == "cron":
         return SYSTEM
+    if source == "cli" and test_mode and test_caller:
+        return SYSTEM if test_caller == SYSTEM else normalize_br_phone(test_caller)
     return None
 
 
@@ -293,11 +304,57 @@ def filtrar_saida(texto: str, papel: str, grupo_jid=None, grupos=None) -> tuple:
 
 # -- Ferramentas --------------------------------------------------------------
 
-def decide_tool_call(tool_name: str, identity: Optional[str]) -> dict:
-    """Arnaldo ainda nao tem ferramentas de negocio: so leitura passa."""
+TOOL_PREFIX = "mcp__oficina__"
+
+# O que o CLIENTE pode chamar. O resto e so da equipe. A API decide o papel de novo, de forma
+# independente (pelo telefone assinado); o bloqueio aqui economiza uma ida a API e da mensagem melhor.
+CLIENT_TOOLS = frozenset({
+    "quem_sou", "meus_dados", "cadastrar_cliente_veiculo", "status_do_carro", "horarios_livres",
+    "agendar", "meus_agendamentos", "remarcar", "cancelar_agendamento",
+})
+
+
+def sign(phone: str, session_id: str, ts: int, secret: str) -> str:
+    return hmac.new(secret.encode(), f"{phone}|{session_id}|{ts}".encode(), hashlib.sha256).hexdigest()
+
+
+def caller_envelope(phone: str, session_id: str, secret: str, now_ms: Optional[int] = None) -> dict:
+    ts = int(now_ms if now_ms is not None else time.time() * 1000)
+    return {"phone": phone, "session_id": session_id, "ts": ts, "sig": sign(phone, session_id, ts, secret)}
+
+
+def decide_tool_call(
+    tool_name: str,
+    args: Optional[dict],
+    session_id: str,
+    identity: Optional[str],
+    papel: str,
+    secret: str,
+    now_ms: Optional[int] = None,
+) -> dict:
+    """Diretiva de pre_tool_call.
+
+    identity: telefone canonico, SYSTEM (cron) ou None quando desconhecido (nunca se adivinha).
+    Duas familias: os builtins de leitura (SAFE_BUILTINS) e o MCP `oficina` (assinado aqui).
+    Qualquer outra coisa (terminal, execute_code, web...) e bloqueada para todos os papeis.
+    """
     if tool_name in SAFE_BUILTINS:
         return {"action": "allow"}
-    return {"action": "block", "message": "Essa ferramenta ainda não está disponível para o Arnaldo."}
+    if not identity:
+        return {"action": "block", "message": "Não consegui identificar de qual número vem esta conversa; a ação não foi executada."}
+    if not tool_name.startswith(TOOL_PREFIX):
+        return {"action": "block", "message": "Essa ferramenta não está disponível para o Arnaldo."}
+    if papel == DESCONHECIDO:
+        return {"action": "block", "message": "Não consegui identificar quem está falando; a ação não foi executada."}
+    nome = tool_name[len(TOOL_PREFIX):]
+    if papel == CLIENTE and nome not in CLIENT_TOOLS:
+        return {"action": "block", "message": "Essa ação é só para a equipe da oficina."}
+    if not secret:
+        return {"action": "block", "message": "Sistema da oficina sem configuração de segurança; a ação não foi executada."}
+    novos = dict(args or {})
+    novos.pop("caller", None)  # nunca confiar no que o modelo mandou
+    novos["caller"] = caller_envelope(identity, session_id, secret, now_ms)
+    return {"action": "modify", "args": novos}
 
 
 # -- Grupo --------------------------------------------------------------------

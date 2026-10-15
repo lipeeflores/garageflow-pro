@@ -158,10 +158,12 @@ def test_grupo_so_responde_quando_chamado():
     assert not core.chamado_no_grupo("almoço chegou", [], [], False)
 
 
-def test_ferramentas_bloqueadas_por_enquanto():
-    assert core.decide_tool_call("skills_list", "5547999990001")["action"] == "allow"
-    assert core.decide_tool_call("execute_code", "5547999990001")["action"] == "block"
-    assert core.decide_tool_call("mcp__oficina__criar_os", "5547999990001")["action"] == "block"
+def test_ferramentas_so_leitura_e_oficina():
+    # Detalhes (assinatura, papeis) em test_oficina.py.
+    ident = "5547999990001"
+    assert core.decide_tool_call("skills_list", {}, "s", ident, core.GESTAO, "k")["action"] == "allow"
+    assert core.decide_tool_call("execute_code", {}, "s", ident, core.GESTAO, "k")["action"] == "block"
+    assert core.decide_tool_call("mcp__oficina__ver_os", {}, "s", ident, core.GESTAO, "k")["action"] == "modify"
 
 
 def test_identidade_vem_da_chave_de_sessao():
