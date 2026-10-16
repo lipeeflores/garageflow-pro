@@ -26,3 +26,6 @@ dist-ssr
 
 # Exemplos de documentos gerados pelo Gotenberg (so no disco, para conferir o visual)
 docs/superpowers/reports/documentos-exemplo/
+.vercel
+.env*.local
+supabase/.temp/
