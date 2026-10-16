@@ -425,7 +425,7 @@ AVISO_PADRAO = "Claro! Só um instante que já vejo aqui no sistema."
 AVISOS = {
     "gerar_documento": "Claro! Já estou preparando o documento, só um instante.",
     "consultar_placa": "Claro! Vou puxar os dados da placa, só um instante.",
-    "anexar_foto": "Recebi! Já estou guardando a foto no sistema, só um instante.",
+    "anexar_foto": "Recebi! Já estou guardando no sistema, só um instante.",
 }
 SEM_AVISO = frozenset({"quem_sou"})  # rápida e invisível para quem fala
 
@@ -509,3 +509,39 @@ def chamado_no_grupo(text, bot_ids, mentioned_ids, reply_to_bot: bool) -> bool:
     if any("@" + b in low for b in mine):
         return True
     return bool(re.search(r"\barnaldo\b", low))
+
+
+# -- Virada do dia (16/10) ------------------------------------------------------
+# O plugin virada_do_dia (o mesmo do Manfred, da Ária e da Isabelle) dá /new de madrugada com
+# passagem de turno, só nas conversas listadas em <perfil>/virada.json. Aqui a lista se mantém
+# sozinha: toda conversa da EQUIPE (e do grupo financeiro, a gerência) entra na primeira vez que
+# fala. Cliente fica fora (como na Isabelle), e o sistema da oficina guarda o que importa dele.
+
+VIRADA_PADRAO = {
+    "hora": "03:30", "ate": "05:30", "ocioso_minutos": 30,
+    "modelo": "hermes-resumo", "agente": "Arnaldo", "conversas": {},
+}
+
+
+def deve_virar(source: Optional[str], session_key: Optional[str], papel: str,
+               grupo_jid: Optional[str], grupos: dict) -> bool:
+    """A conversa entra na virada? Só WhatsApp, só equipe ou grupo financeiro."""
+    if "whatsapp" not in str(source or "").lower() or not session_key:
+        return False
+    if grupo_jid:
+        return bool((grupos or {}).get(grupo_jid, {}).get("financeiro"))
+    return papel in EQUIPE_PAPEIS
+
+
+def inscrever_virada(cfg: Optional[dict], session_key: str, nome: str) -> tuple:
+    """(virada.json novo, mudou?). Não mexe em quem já está, nem nas outras chaves."""
+    novo = dict(VIRADA_PADRAO) if not isinstance(cfg, dict) else dict(cfg)
+    conversas = novo.get("conversas")
+    if isinstance(conversas, list):
+        conversas = {c: "Equipe" for c in conversas}
+    conversas = dict(conversas or {})
+    if session_key in conversas:
+        return novo, False
+    conversas[session_key] = (nome or "Equipe").strip() or "Equipe"
+    novo["conversas"] = conversas
+    return novo, True

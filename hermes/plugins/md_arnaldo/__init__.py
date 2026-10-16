@@ -635,6 +635,38 @@ def _despachar(event: Any = None, gateway: Any = None):
         return None
 
 
+_virada_lock = threading.Lock()
+
+
+def _inscrever_na_virada(session_id: str, identity: Optional[str], grupo: Optional[str], indice: dict) -> None:
+    """Põe a conversa da equipe em <perfil>/virada.json (lido a cada minuto pelo virada_do_dia)."""
+    row = _session_row(session_id)
+    if not row:
+        return
+    papel = core.papel_de(identity, indice)
+    if not core.deve_virar(row[0], row[1], papel, grupo, _grupos()):
+        return
+    nome = (indice.get(identity) or {}).get("nome") or papel
+    caminho = os.path.join(_home(), "virada.json")
+    with _virada_lock:
+        try:
+            with open(caminho, encoding="utf-8") as fh:
+                atual = json.load(fh)
+        except FileNotFoundError:
+            atual = None
+        except Exception as exc:
+            logger.warning("virada.json ilegível (%s): não mexo nele", exc)
+            return
+        novo, mudou = core.inscrever_virada(atual, row[1], nome)
+        if not mudou:
+            return
+        tmp = f"{caminho}.tmp-{os.getpid()}"
+        with open(tmp, "w", encoding="utf-8") as fh:
+            json.dump(novo, fh, ensure_ascii=False, indent=1)
+        os.replace(tmp, caminho)
+    logger.info("arnaldo: conversa %s entrou na virada do dia (%s)", row[1], nome)
+
+
 def on_pre_llm_call(session_id: str = "", platform: str = "", user_message: Any = "", **_: Any):
     _turno_comecou(session_id)
     try:
@@ -643,7 +675,12 @@ def on_pre_llm_call(session_id: str = "", platform: str = "", user_message: Any 
 
         identity, grupo = _quem_e_onde(session_id)
         agora = datetime.now(ZoneInfo("America/Sao_Paulo"))
-        return {"context": core.turn_context(identity, _indice(identity, bloquear=True), agora, grupo, _grupos())}
+        indice = _indice(identity, bloquear=True)
+        try:
+            _inscrever_na_virada(session_id, identity, grupo, indice)
+        except Exception as exc:
+            logger.warning("virada: inscrição falhou (%s)", exc)
+        return {"context": core.turn_context(identity, indice, agora, grupo, _grupos())}
     except Exception as exc:
         logger.warning("pre_llm_call falhou: %s", exc)
         return None
