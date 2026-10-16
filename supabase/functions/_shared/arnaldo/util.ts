@@ -12,7 +12,15 @@ export class ErroArnaldo extends Error {
 }
 
 export type Args = Record<string, unknown>;
-export type Acao = { papeis: Papel[]; run: (args: Args, ctx: Ctx) => Promise<unknown> };
+export type Acao = {
+  papeis: Papel[];
+  run: (args: Args, ctx: Ctx) => Promise<unknown>;
+  /**
+   * Só `dados_documento`: o orçamento e o recibo levam valores de propósito (inclusive para o cliente dono da OS),
+   * então o roteador não aplica `semDinheiro`. A própria ação monta a resposta sem dinheiro quando o documento não pode ter.
+   */
+  liberaDinheiro?: boolean;
+};
 
 export const TODOS: Papel[] = ["cliente", "patio", "gestao", "dono", "sistema"];
 export const CLIENTE_E_EQUIPE: Papel[] = ["cliente", "patio", "gestao", "dono"];
@@ -80,6 +88,17 @@ export function dinheiro(v: unknown, campo: string, opts: { obrig?: boolean; pos
     throw invalido(`O campo "${campo}" precisa ser um valor em reais ${positivo ? "maior que zero" : "válido"}.`);
   }
   return Math.round(n * 100) / 100;
+}
+
+/** true/false, "sim"/"não", "s"/"n"; ausente → undefined. */
+export function simNao(args: Args, campo: string): boolean | undefined {
+  const v = args[campo];
+  if (v === undefined || v === null || v === "") return undefined;
+  if (typeof v === "boolean") return v;
+  const t = String(v).trim().toLowerCase();
+  if (["true", "sim", "s", "yes"].includes(t)) return true;
+  if (["false", "nao", "não", "n", "no"].includes(t)) return false;
+  throw invalido(`O campo "${campo}" precisa ser sim ou não.`);
 }
 
 export function booleano(args: Args, campo: string): boolean {

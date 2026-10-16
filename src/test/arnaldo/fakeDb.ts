@@ -17,6 +17,7 @@ export class FakeDb {
   uniques: Record<string, string[][]> = {};
   uploads: { bucket: string; path: string; bytes: Uint8Array; contentType?: string }[] = [];
   falhaEm: Record<string, string> = {}; // tabela → mensagem: força erro de banco
+  colunasInexistentes: Record<string, string[]> = {}; // tabela → colunas que ainda não existem (migração não aplicada)
   private seq = 0;
 
   constructor(seed: Record<string, Row[]> = {}, uniques: Record<string, string[][]> = {}) {
@@ -91,10 +92,26 @@ class Builder implements PromiseLike<Res> {
     const todas = this.db.rows(this.t);
     let alvo: Row[] = [];
 
+    const ausentes = this.db.colunasInexistentes[this.t] ?? [];
+    const alvoPayload = this.op === "insert" || this.op === "update" ? (Array.isArray(this.payload) ? this.payload : [this.payload]) : [];
+    for (const r of alvoPayload) {
+      const faltando = Object.keys(r).find((k) => ausentes.includes(k));
+      if (faltando) return { data: null, error: { code: "PGRST204", message: `Could not find the '${faltando}' column of '${this.t}' in the schema cache` } };
+    }
+
     if (this.op === "insert") {
-      const novos = (Array.isArray(this.payload) ? this.payload : [this.payload]).map((r: Row) => ({
+      const novos: Row[] = (Array.isArray(this.payload) ? this.payload : [this.payload]).map((r: Row) => ({
         id: this.db.novoId(), created_at: new Date().toISOString(), ...r,
       }));
+      if (this.t === "work_orders") {
+        // o trigger do banco preenche o número sequencial por oficina
+        for (const n of novos) {
+          if (n.numero == null) {
+            const doTenant = [...todas, ...novos.filter((x: Row) => x !== n && x.numero != null)].filter((r) => r.tenant_id === n.tenant_id);
+            n.numero = Math.max(0, ...doTenant.map((r) => Number(r.numero) || 0)) + 1;
+          }
+        }
+      }
       for (const n of novos) {
         for (const cols of this.db.uniques[this.t] ?? []) {
           if (todas.some((r) => cols.every((c) => r[c] !== undefined && r[c] === n[c]))) {

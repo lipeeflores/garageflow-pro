@@ -783,6 +783,11 @@ export type Database = {
           checked_in_at: string | null
           created_at: string | null
           customer_items: string | null
+          avarias: string | null
+          estado_estepe: string | null
+          tem_chave_roda: boolean | null
+          tem_estepe: boolean | null
+          tem_macaco: boolean | null
           fuel_level: Database["public"]["Enums"]["fuel_level"]
           id: string
           km_current: number
@@ -795,6 +800,11 @@ export type Database = {
           checked_in_at?: string | null
           created_at?: string | null
           customer_items?: string | null
+          avarias?: string | null
+          estado_estepe?: string | null
+          tem_chave_roda?: boolean | null
+          tem_estepe?: boolean | null
+          tem_macaco?: boolean | null
           fuel_level: Database["public"]["Enums"]["fuel_level"]
           id?: string
           km_current: number
@@ -807,6 +817,11 @@ export type Database = {
           checked_in_at?: string | null
           created_at?: string | null
           customer_items?: string | null
+          avarias?: string | null
+          estado_estepe?: string | null
+          tem_chave_roda?: boolean | null
+          tem_estepe?: boolean | null
+          tem_macaco?: boolean | null
           fuel_level?: Database["public"]["Enums"]["fuel_level"]
           id?: string
           km_current?: number
@@ -1157,6 +1172,12 @@ export type Database = {
           current_mechanic_id: string | null
           customer_id: string
           expected_delivery_date: string | null
+          entregue_em: string | null
+          garantia_ate: string | null
+          km_saida: number | null
+          numero: number | null
+          proxima_revisao_data: string | null
+          proxima_revisao_km: number | null
           id: string
           initial_complaint: string | null
           order_type: Database["public"]["Enums"]["work_order_type"] | null
@@ -1176,6 +1197,12 @@ export type Database = {
           current_mechanic_id?: string | null
           customer_id: string
           expected_delivery_date?: string | null
+          entregue_em?: string | null
+          garantia_ate?: string | null
+          km_saida?: number | null
+          numero?: number | null
+          proxima_revisao_data?: string | null
+          proxima_revisao_km?: number | null
           id?: string
           initial_complaint?: string | null
           order_type?: Database["public"]["Enums"]["work_order_type"] | null
@@ -1195,6 +1222,12 @@ export type Database = {
           current_mechanic_id?: string | null
           customer_id?: string
           expected_delivery_date?: string | null
+          entregue_em?: string | null
+          garantia_ate?: string | null
+          km_saida?: number | null
+          numero?: number | null
+          proxima_revisao_data?: string | null
+          proxima_revisao_km?: number | null
           id?: string
           initial_complaint?: string | null
           order_type?: Database["public"]["Enums"]["work_order_type"] | null

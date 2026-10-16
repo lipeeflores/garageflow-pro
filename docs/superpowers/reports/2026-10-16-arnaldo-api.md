@@ -71,3 +71,35 @@ Campos extras aceitos pela API e que o schema atual do MCP (`tools.mjs`) ainda n
 - `deno` não existe nesta máquina: o código foi testado em Node/vitest. Em produção o Lovable empacotou `../_shared/arnaldo/*` e a A5 rodou (confirmado pela sessão do servidor).
 - Esta pasta é compartilhada com a outra sessão (Parte B): os commits de `hermes/` estão intercalados com os meus em `main`. Só dei `git add` nos meus caminhos.
 - Nada foi gravado nem apagado no banco de produção (não há acesso); os testes usam só o `fakeDb`.
+
+---
+
+# Parte D1 (documentos da MD): `dados_documento`, `registrar_entrega` e número da OS
+
+Plano `2026-10-15-documentos-md.md`. 154 testes verdes (`npx vitest run src/test/arnaldo`), `tsc -p tsconfig.app.json` com os mesmos 2 erros antigos. `VERSAO` = `d1-…`. O que o Lipe pede ao Lovable está em `2026-10-16-documentos-lovable.md`. **Nada disso está em produção até o Lovable aplicar a migração e publicar a função.**
+
+## Ações novas ou alteradas
+
+- **`dados_documento`** (`tipo`: `orcamento`, `ficha_entrada`, `os_patio`, `recibo`; alvo: `os_id`, `numero` ou `placa`). Todos os papéis chamam; a API decide o que sai:
+
+| tipo | cliente | pátio | gestão / dono / sistema | exige |
+|---|---|---|---|---|
+| `orcamento` | só da própria OS | `sem_permissao` | sim | etapa a partir de AGUARDANDO_APROVACAO (CANCELADO não), senão `etapa_invalida` |
+| `recibo` | só da própria OS | `sem_permissao` | sim | pagamento registrado **ou** FINALIZADO, senão `etapa_invalida` |
+| `ficha_entrada` | só da própria OS | sim | sim | check-in, senão `nao_encontrado` |
+| `os_patio` | `sem_permissao` | sim | sim (**sem dinheiro**) | nada |
+
+  Cliente pedindo OS de outro ou inexistente recebe a mesma resposta (`nao_encontrado`, "Não achei essa ordem de serviço neste número."); por placa de outro, a mensagem de sempre ("Não achei esse carro no cadastro deste número.").
+- **Dinheiro:** `os_patio` **e** `ficha_entrada` não têm as chaves `itens[].preco_unitario`, `itens[].total`, `totais` e `pagamentos` (ausentes, não nulas), **para nenhum papel, nem o dono**. Os itens dessas duas saem como `{tipo, descricao, codigo, quantidade}`. A ficha também fica sem dinheiro (decisão minha, além do plano, que só exigia no `os_patio`): o pátio pode pedir a ficha, e a ficha não tem valor. **Os templates da ficha e da OS do pátio não podem ler `totais`, `pagamentos` nem preço dos itens.** `link_aprovacao` só vem no orçamento (o link do orçamento mostra os preços; no pátio seria vazamento); nos outros tipos é `null`. `validade_ate` só no orçamento.
+- **Exceção ao filtro do roteador:** a ação tem `liberaDinheiro: true`, para o roteador não aplicar `semDinheiro` por cima (senão o cliente dono da OS perderia os preços do próprio orçamento e o `valor` dos pagamentos). É a única ação assim; o roteador continua filtrando todas as outras.
+- **Contrato:** exatamente as chaves do plano. Campos sem dado vêm `null`. `os.aprovada_em` é o último evento `WORKFLOW_STEP_CHANGE` para APROVADO; `validade_ate` = data do envio do orçamento (evento para AGUARDANDO_APROVACAO, senão hoje) + `config.validade_orcamento_dias`. `fotos`: só fotos (áudio e ponto fora), as que não são avaria primeiro, avarias depois, cada grupo por data. `totais.desconto` é sempre 0 (o app não tem desconto). `previsao_entrega` é a data como está no banco (coluna `date`, sem horário). `config` = `tenants.settings.documentos` mesclado com os padrões (textos copiados dos mockups).
+- **`registrar_entrega`** (gestão/dono): `os_id` ou `numero`, `km_saida` (obrigatório), `garantia_dias` (padrão da config, 90; 0 = sem garantia), `proxima_revisao_km`, `proxima_revisao_data`. Grava `entregue_em`, `km_saida`, `garantia_ate` (data de hoje + dias, fuso de São Paulo) e, se a OS está em PRONTO_PARA_RETIRADA, move para FINALIZADO no mesmo update. Em outra etapa registra a entrega e **não** mexe na etapa (`finalizada: false`). CANCELADO → `etapa_invalida`; entrega já registrada → `conflito` (não sobrescreve).
+- **`registrar_checkin`** aceita `tem_estepe`, `estado_estepe`, `tem_macaco`, `tem_chave_roda`, `avarias` (sim/não aceitam `true/false`, "sim", "não"). Se a migração ainda não foi aplicada, grava no formato antigo com esses dados no texto dos pertences (ver o relatório do Lovable).
+- **Número da OS** (`numero` e `numero_fmt` "0042") em toda saída de OS: `abrir_os`, `status_do_carro`, `ver_os`, `buscar`, `enviar_orcamento`, `registrar_entrega` e `dados_documento`. Qualquer ação que recebe `os_id` aceita também o número ("42", "OS 42", "0042", `numero: 42`); `ver_os` e `dados_documento` também aceitam `numero`. `buscar` com o termo "OS 42" / "42" / "0042" acha a OS. `ver_os` agora traz entrega, garantia e os campos novos do check-in.
+- **`anexar_foto`:** a `legenda` agora também entra no nome do arquivo (`<tipo>__<legenda>__<timestamp>.<ext>`), de onde o `dados_documento` a lê (a tabela não tem coluna de legenda). Ver "TODO: marcar avaria" no relatório do Lovable.
+
+## Para a sessão do MCP
+
+- Os schemas do MCP precisam declarar: `registrar_entrega`, `dados_documento` e os campos novos de `registrar_checkin`. `dados_documento` aceita `numero` além de `os_id` e `placa`.
+- Erros possíveis do `dados_documento`: `dados_invalidos` (tipo ou alvo ausente), `sem_permissao`, `nao_encontrado`, `etapa_invalida`.
+- Código de erro `conflito` (já usado antes) também sai de `registrar_entrega`.

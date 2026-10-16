@@ -1,5 +1,5 @@
 import { GESTAO, ErroArnaldo, invalido, ok, type Acao } from "../util.ts";
-import { gravarEtapa, osDoArg } from "../os.ts";
+import { gravarEtapa, numeroDe, osDoArg } from "../os.ts";
 import { totalDosItens } from "../financeiro.ts";
 
 const acao: Acao = {
@@ -21,7 +21,7 @@ const acao: Acao = {
     ok(await ctx.db.from("work_orders").update({ total_amount: total }).eq("tenant_id", ctx.tenantId).eq("id", os.id), "work_orders");
     if (etapa === "AGUARDANDO_ORCAMENTO") await gravarEtapa(ctx, os.id, "AGUARDANDO_APROVACAO");
 
-    const dados: Record<string, unknown> = { etapa: "AGUARDANDO_APROVACAO", total_amount: total };
+    const dados: Record<string, unknown> = { ...numeroDe(os), etapa: "AGUARDANDO_APROVACAO", total_amount: total };
     if (ctx.appPublicUrl) {
       dados.link_orcamento = `${ctx.appPublicUrl}/orcamento/${os.id}?token=${String(os.id).slice(0, 8).toUpperCase()}`;
     }

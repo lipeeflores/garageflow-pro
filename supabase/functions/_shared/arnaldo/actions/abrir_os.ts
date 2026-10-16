@@ -1,3 +1,4 @@
+import { numeroDe } from "../os.ts";
 import { EQUIPE, ErroArnaldo, escolha, invalido, ok, texto, veiculoDoChamador, type Acao } from "../util.ts";
 
 const PRIORIDADES = ["BAIXA", "MEDIA", "ALTA"] as const;
@@ -34,7 +35,7 @@ const acao: Acao = {
     if (ag) {
       ok(await ctx.db.from("appointments").update({ status: "CHEGOU" }).eq("tenant_id", ctx.tenantId).eq("id", ag.id), "appointments");
     }
-    return { os_id: os.id };
+    return { os_id: os.id, ...numeroDe(os) };
   },
 };
 export default acao;

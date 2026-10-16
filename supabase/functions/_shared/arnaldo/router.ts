@@ -28,6 +28,8 @@ import controle_qualidade from "./actions/controle_qualidade.ts";
 import registrar_pagamento from "./actions/registrar_pagamento.ts";
 import resumo_financeiro from "./actions/resumo_financeiro.ts";
 import contas_a_pagar from "./actions/contas_a_pagar.ts";
+import dados_documento from "./actions/dados_documento.ts";
+import registrar_entrega from "./actions/registrar_entrega.ts";
 
 export type Resultado =
   | { ok: true; dados: unknown }
@@ -61,6 +63,8 @@ export const ACOES: Record<string, Acao> = {
   registrar_pagamento,
   resumo_financeiro,
   contas_a_pagar,
+  dados_documento,
+  registrar_entrega,
 };
 
 export async function despachar(acao: string, args: unknown, ctx: Ctx): Promise<Resultado> {
@@ -75,7 +79,7 @@ export async function despachar(acao: string, args: unknown, ctx: Ctx): Promise<
   delete limpo.caller;
   try {
     let dados = await a.run(limpo, ctx);
-    if (!veDinheiro(ctx.papel)) dados = semDinheiro(dados); // SEMPRE, em toda ação
+    if (!veDinheiro(ctx.papel) && !a.liberaDinheiro) dados = semDinheiro(dados); // SEMPRE, em toda ação (exceção única: dados_documento)
     return { ok: true, dados };
   } catch (e) {
     if (e instanceof ErroArnaldo) return falha(e.codigo, e.message);

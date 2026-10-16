@@ -12,6 +12,13 @@ function bytesDeBase64(b64: string): Uint8Array {
   return out;
 }
 
+// A tabela attachments não tem coluna de legenda: ela vai no nome (`<tipo>__<legenda>__<ts>.<ext>`),
+// de onde o dados_documento a lê (legendaDaFoto).
+function nomeDoArquivo(tipo: string, legenda: string | undefined, ts: number, ext: string): string {
+  const leg = (legenda ?? "").replace(/__+/g, "_").replace(/[\/]/g, "-").trim();
+  return leg ? `${tipo.toLowerCase()}__${leg}__${ts}.${ext}` : `${tipo.toLowerCase()}-${ts}.${ext}`;
+}
+
 const acao: Acao = {
   papeis: EQUIPE,
   async run(args, ctx) {
@@ -39,7 +46,7 @@ const acao: Acao = {
     const anexo = ok(
       await ctx.db.from("attachments").insert({
         tenant_id: ctx.tenantId, parent_type: "work_order", parent_id: os.id, attachment_type: tipo, file_url: url,
-        file_name: `${tipo.toLowerCase()}-${ts}.${MIMES[mime]}`, file_type: mime, file_size: bytes.length, uploaded_by: ctx.atorId,
+        file_name: nomeDoArquivo(tipo, legenda, ts, MIMES[mime]), file_type: mime, file_size: bytes.length, uploaded_by: ctx.atorId,
       }).select().single(),
       "attachments",
     );

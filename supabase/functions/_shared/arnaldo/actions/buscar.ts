@@ -1,5 +1,6 @@
 import { normalizeBrPhone } from "../phone.ts";
 import { etapaEmPortugues } from "../workflow.ts";
+import { numeroDe, numeroDeTexto } from "../os.ts";
 import { EQUIPE_E_SISTEMA, ok, placaNorm, texto, type Acao } from "../util.ts";
 
 const MAX = 10;
@@ -54,9 +55,24 @@ const acao: Acao = {
         "work_orders",
       ) ?? [];
       os = rows.map((o: any) => ({
-        os_id: o.id, placa: placaNorm(veiculos.find((v) => v.id === o.vehicle_id)?.plate),
+        os_id: o.id, ...numeroDe(o), placa: placaNorm(veiculos.find((v) => v.id === o.vehicle_id)?.plate),
         etapa: o.workflow_step, etapa_texto: etapaEmPortugues(o.workflow_step), queixa: o.initial_complaint ?? null,
       }));
+    }
+
+    // OS pelo número ("OS 42", "42", "0042")
+    const nOs = numeroDeTexto(termo);
+    if (nOs !== null) {
+      const porNumero = ok(await ctx.db.from("work_orders").select("*").eq("tenant_id", t).eq("numero", nOs).limit(1), "work_orders") ?? [];
+      for (const o of porNumero) {
+        if (os.some((x) => x.os_id === o.id)) continue;
+        const v = ok(await ctx.db.from("vehicles").select("*").eq("tenant_id", t).eq("id", o.vehicle_id).maybeSingle(), "vehicles");
+        os.unshift({
+          os_id: o.id, ...numeroDe(o), placa: placaNorm(v?.plate), etapa: o.workflow_step, etapa_texto: etapaEmPortugues(o.workflow_step),
+          queixa: o.initial_complaint ?? null,
+        });
+        if (v && !veiculos.some((x) => x.id === v.id)) veiculos.push(v);
+      }
     }
 
     return {

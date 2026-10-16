@@ -1,26 +1,23 @@
 import { veDinheiro } from "../roles.ts";
 import { etapaEmPortugues } from "../workflow.ts";
 import { ErroArnaldo, EQUIPE_E_SISTEMA, exigirPlaca, ok, placaNorm, texto, veiculoPorPlaca, type Acao } from "../util.ts";
-import { ETAPAS_FECHADAS, osPorId } from "../os.ts";
+import { numeroDe, osMaisRecenteDoVeiculo, osPorId } from "../os.ts";
 
 const acao: Acao = {
   papeis: EQUIPE_E_SISTEMA,
   async run(args, ctx) {
     const t = ctx.tenantId;
     let os: any;
-    if (texto(args, "os_id", { obrig: false, max: 64 })) {
-      os = await osPorId(ctx, String(args.os_id).trim());
+    const ref = texto(args, "os_id", { obrig: false, max: 64 }) ?? (args.numero !== undefined && args.numero !== null && args.numero !== "" ? String(args.numero) : undefined);
+    if (ref) {
+      os = await osPorId(ctx, ref); // id (uuid) ou número: "42", "OS 42", "0042"
     } else if (args.placa) {
       const v = await veiculoPorPlaca(ctx, exigirPlaca(args.placa));
       if (!v) throw new ErroArnaldo("nao_encontrado", "Não achei essa placa no cadastro da oficina.");
-      const oss = ok(
-        await ctx.db.from("work_orders").select("*").eq("tenant_id", t).eq("vehicle_id", v.id).order("created_at", { ascending: false }).limit(20),
-        "work_orders",
-      ) ?? [];
-      os = oss.find((o: any) => !ETAPAS_FECHADAS.includes(o.workflow_step)) ?? oss[0];
+      os = await osMaisRecenteDoVeiculo(ctx, v.id);
       if (!os) throw new ErroArnaldo("nao_encontrado", "Esse carro não tem ordem de serviço.");
     } else {
-      throw new ErroArnaldo("dados_invalidos", 'Informe "os_id" ou "placa".');
+      throw new ErroArnaldo("dados_invalidos", 'Informe "os_id", "numero" ou "placa".');
     }
 
     const [cli, veic, checkin, diags, itens, eventos, mecanico] = await Promise.all([
@@ -48,6 +45,7 @@ const acao: Acao = {
 
     return {
       os_id: os.id,
+      ...numeroDe(os),
       etapa: os.workflow_step,
       etapa_texto: etapaEmPortugues(os.workflow_step),
       queixa: os.initial_complaint ?? null,
@@ -56,11 +54,16 @@ const acao: Acao = {
       mecanico: ok(mecanico, "profiles")?.full_name ?? null,
       previsao_entrega: os.expected_delivery_date ?? null,
       criada_em: os.created_at ?? null,
+      entregue_em: os.entregue_em ?? null,
+      km_saida: os.km_saida ?? null,
+      garantia_ate: os.garantia_ate ?? null,
+      proxima_revisao_km: os.proxima_revisao_km ?? null,
+      proxima_revisao_data: os.proxima_revisao_data ?? null,
       total_amount: os.total_amount ?? 0,
       cliente: c ? { id: c.id, nome: c.full_name, telefone: c.phone_number } : null,
       veiculo: v ? { id: v.id, placa: placaNorm(v.plate), marca: v.make, modelo: v.model } : null,
       checkin: ck
-        ? { km: ck.km_current, combustivel: ck.fuel_level, pertences: ck.customer_items ?? null, observacoes: ck.observations ?? null, em: ck.checked_in_at ?? ck.created_at ?? null }
+        ? { km: ck.km_current, combustivel: ck.fuel_level, pertences: ck.customer_items ?? null, observacoes: ck.observations ?? null, avarias: ck.avarias ?? null, tem_estepe: ck.tem_estepe ?? null, estado_estepe: ck.estado_estepe ?? null, tem_macaco: ck.tem_macaco ?? null, tem_chave_roda: ck.tem_chave_roda ?? null, em: ck.checked_in_at ?? ck.created_at ?? null }
         : null,
       diagnosticos: (ok(diags, "work_order_diagnostics") ?? []).map((d: any) => ({
         id: d.id, laudo: d.technical_report, mecanico_id: d.mechanic_id, em: d.ended_at ?? d.created_at ?? null,
