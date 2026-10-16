@@ -31,6 +31,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -57,6 +58,11 @@ const formSchema = z.object({
   km_current: z.coerce.number().min(0, "KM deve ser maior que 0"),
   fuel_level: z.enum(["RESERVA", "QUARTO", "METADE", "TRES_QUARTOS", "COMPLETO"]),
   observations: z.string().optional(),
+  tem_estepe: z.boolean(),
+  estado_estepe: z.string().optional(),
+  tem_macaco: z.boolean(),
+  tem_chave_roda: z.boolean(),
+  avarias: z.string().optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -150,6 +156,11 @@ export function CheckinDialog({
       km_current: 0,
       fuel_level: "METADE",
       observations: "",
+      tem_estepe: false,
+      estado_estepe: "",
+      tem_macaco: false,
+      tem_chave_roda: false,
+      avarias: "",
     },
   });
 
@@ -309,6 +320,11 @@ export function CheckinDialog({
           km_current: data.km_current,
           fuel_level: data.fuel_level,
           observations: data.observations || null,
+          tem_estepe: data.tem_estepe,
+          estado_estepe: data.tem_estepe ? data.estado_estepe || null : null,
+          tem_macaco: data.tem_macaco,
+          tem_chave_roda: data.tem_chave_roda,
+          avarias: data.avarias || null,
           mechanic_id: user?.id,
         }, {
           onConflict: 'work_order_id',
@@ -616,7 +632,7 @@ export function CheckinDialog({
               name="observations"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Observações (Avarias Existentes)</FormLabel>
+                  <FormLabel>Observações</FormLabel>
                   <FormControl>
                     <Textarea
                       placeholder="Ex: Arranhão na porta dianteira esquerda, amassado no para-lama traseiro direito..."
@@ -628,6 +644,44 @@ export function CheckinDialog({
                 </FormItem>
               )}
             />
+
+            <div className="space-y-3">
+              <h4 className="text-sm font-medium">Itens de segurança</h4>
+              <div className="grid gap-2 sm:grid-cols-3">
+              <FormField control={form.control} name="tem_estepe" render={({ field }) => (
+                <FormItem className="flex items-center justify-between rounded-md border p-3 space-y-0">
+                  <FormLabel>Estepe</FormLabel>
+                  <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="tem_macaco" render={({ field }) => (
+                <FormItem className="flex items-center justify-between rounded-md border p-3 space-y-0">
+                  <FormLabel>Macaco</FormLabel>
+                  <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="tem_chave_roda" render={({ field }) => (
+                <FormItem className="flex items-center justify-between rounded-md border p-3 space-y-0">
+                  <FormLabel>Chave de roda</FormLabel>
+                  <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                </FormItem>
+              )} />
+              </div>
+              {form.watch("tem_estepe") && (
+                <FormField control={form.control} name="estado_estepe" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Estado do estepe</FormLabel>
+                    <FormControl><Input placeholder="Ex: Bom, murcho, careca..." {...field} /></FormControl>
+                  </FormItem>
+                )} />
+              )}
+              <FormField control={form.control} name="avarias" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Avarias</FormLabel>
+                  <FormControl><Textarea placeholder="Ex: Arranhão na porta dianteira esquerda..." className="min-h-[80px]" {...field} /></FormControl>
+                </FormItem>
+              )} />
+            </div>
 
             {/* Upload Progress */}
             {isSubmitting && (

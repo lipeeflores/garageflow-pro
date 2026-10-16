@@ -40,6 +40,7 @@ import {
 } from "@/components/workorder";
 import { MechanicPickerDialog } from "@/components/workorder/MechanicPickerDialog";
 import { CheckinDialog } from "@/components/checkin";
+import { DeliveryInfoCard } from "@/components/workorder/DeliveryInfoCard";
 import { usePDFExport } from "@/hooks/usePDFExport";
 import { cn } from "@/lib/utils";
 
@@ -178,7 +179,7 @@ export default function OrdemDetalhe() {
 
   return (
     <AppLayout 
-      title={`OS-${workOrder.id.slice(0, 8).toUpperCase()}`} 
+      title={workOrder.numero ? `OS ${String(workOrder.numero).padStart(4, "0")}` : `OS-${workOrder.id.slice(0, 8).toUpperCase()}`} 
       subtitle="Detalhes da Ordem de Serviço"
     >
       <div className="space-y-6 animate-fade-in">
@@ -506,6 +507,10 @@ export default function OrdemDetalhe() {
                   >
                     Retornar p/ Qualidade
                   </Button>
+                )}
+
+                {(workOrder.workflow_step === "PRONTO_PARA_RETIRADA" || workOrder.workflow_step === "FINALIZADO") && (
+                  <DeliveryInfoCard workOrder={workOrder} canEdit={isAdminOrManager} />
                 )}
 
                 {/* Finalize - ADMIN only */}
