@@ -200,7 +200,7 @@ def turn_context(identity: Optional[str], indice: dict, now_local, grupo_jid=Non
 
 # -- Debounce -----------------------------------------------------------------
 
-DEBOUNCE_EQUIPE = 4.0
+DEBOUNCE_EQUIPE = 0.0  # 15/10: Lipe pediu resposta imediata para a equipe
 DEBOUNCE_CLIENTE = 30.0
 DEBOUNCE_TETO = 180.0
 

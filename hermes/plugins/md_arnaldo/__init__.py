@@ -421,7 +421,8 @@ def on_pre_gateway_dispatch(event: Any = None, gateway: Any = None, session_stor
 
         phone = _phone_from_source(source, event)
         papel = core.papel_de(phone, _equipe())
-        if _espera.segurar(chave, event, gateway, core.debounce_seconds(papel), texto=texto):
+        espera_s = core.debounce_seconds(papel)
+        if espera_s > 0 and _espera.segurar(chave, event, gateway, espera_s, texto=texto):
             return {"action": "skip", "reason": f"arnaldo: juntando mensagens ({papel})"}
         return reescrito
     except Exception as exc:

@@ -101,8 +101,8 @@ def test_contexto_avisa_sigilo_para_quem_nao_ve_dinheiro():
 def test_debounce_por_papel():
     assert core.debounce_seconds(core.CLIENTE) == 30.0
     assert core.debounce_seconds(core.DESCONHECIDO) == 30.0
-    assert core.debounce_seconds(core.PATIO) == 4.0
-    assert core.debounce_seconds(core.GESTAO) == 4.0
+    assert core.debounce_seconds(core.PATIO) == 0.0
+    assert core.debounce_seconds(core.GESTAO) == 0.0
 
 
 def test_juntar_textos_sem_repetir():
