@@ -55,6 +55,17 @@ def test_cliente_so_chama_as_ferramentas_de_cliente():
         assert _decide(PREFIXO + nome)["action"] == "block", nome
 
 
+def test_cliente_pode_consultar_placa_e_gerar_documento_com_chamador_assinado():
+    for nome in ("consultar_placa", "gerar_documento"):
+        assert nome in core.CLIENT_TOOLS
+        d = _decide(PREFIXO + nome, {"tipo": "orcamento", "numero": 42, "caller": {"phone": "5547999990001"}})
+        assert d["action"] == "modify", nome
+        caller = d["args"]["caller"]
+        assert caller["phone"] == CLIENTE  # o do chamador de verdade, nunca o que o modelo mandou
+        assert caller["sig"] == core.sign(CLIENTE, "sess1", caller["ts"], SEGREDO)
+        assert d["args"]["tipo"] == "orcamento"
+
+
 def test_patio_abre_os():
     d = _decide(PREFIXO + "abrir_os", {"placa": "ABC1D23", "queixa": "barulho"}, identity="5547999990003", papel=core.PATIO)
     assert d["action"] == "modify"

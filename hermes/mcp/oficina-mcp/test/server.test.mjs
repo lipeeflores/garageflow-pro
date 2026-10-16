@@ -94,6 +94,7 @@ test('toda ferramenta aceita reason, nenhuma expõe caller, e o catálogo P0 bat
     'quem_sou', 'meus_dados', 'cadastrar_cliente_veiculo', 'status_do_carro', 'horarios_livres', 'agendar',
     'meus_agendamentos', 'remarcar', 'cancelar_agendamento', 'agenda_do_dia', 'buscar', 'ver_os', 'abrir_os',
     'registrar_checkin', 'anexar_foto', 'registrar_diagnostico', 'adicionar_itens', 'mover_etapa', 'atribuir',
+    'registrar_entrega', 'consultar_placa', 'gerar_documento',
   ]);
   // P1 fica desligado por padrão (a API pode não ter essas ações na segunda).
   assert.deepEqual(TOOLS.map(t => t.name), TOOLS_P0.map(t => t.name));

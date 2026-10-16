@@ -132,6 +132,7 @@ def grupos_index(grupos: dict) -> dict:
         out[str(jid).strip()] = {
             "nome": cfg.get("nome") or "",
             "financeiro": cfg.get("financeiro") is True,
+            "responder_tudo": cfg.get("responder_tudo") is True,
         }
     return out
 
@@ -315,6 +316,9 @@ TOOL_PREFIX = "mcp__oficina__"
 CLIENT_TOOLS = frozenset({
     "quem_sou", "meus_dados", "cadastrar_cliente_veiculo", "status_do_carro", "horarios_livres",
     "agendar", "meus_agendamentos", "remarcar", "cancelar_agendamento",
+    # consultar_placa: dado publico do veiculo. gerar_documento: o cliente pede o proprio orcamento/recibo;
+    # quem decide o que ele pode receber (so a OS do proprio veiculo) e a API.
+    "consultar_placa", "gerar_documento",
 })
 
 

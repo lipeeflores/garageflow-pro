@@ -390,6 +390,9 @@ def on_pre_gateway_dispatch(event: Any = None, gateway: Any = None, session_stor
 
         chat_type = getattr(source, "chat_type", "dm")
         if chat_type == "group":
+            # Grupo feito para falar com ele (equipe.json: responder_tudo) -> responde qualquer mensagem.
+            if (_grupos().get(str(getattr(source, "chat_id", "") or "").strip()) or {}).get("responder_tudo"):
+                return None
             raw = getattr(event, "raw_message", None) or {}
             chamado = core.chamado_no_grupo(
                 getattr(event, "text", "") or "", raw.get("botIds") or [], raw.get("mentionedIds") or [],

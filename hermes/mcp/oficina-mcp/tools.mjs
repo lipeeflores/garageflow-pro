@@ -21,7 +21,7 @@ const obj = (properties, required = []) => ({
 });
 
 const PLACA = str('Placa do veículo (com ou sem hífen, maiúscula ou minúscula).');
-const OS_ID = str('id da OS (UUID) devolvido por outra ferramenta. Nunca invente.');
+const OS_ID = str('A OS: o número que aparece nos documentos (ex.: 42, "OS 42" ou "0042") ou o id (UUID) devolvido por outra ferramenta. Nunca invente.');
 const AGENDAMENTO_ID = str('id do agendamento (UUID) devolvido por meus_agendamentos, horarios ou agenda_do_dia. Nunca invente.');
 const ETAPAS = ['AGUARDANDO_CHECKIN', 'CHECKIN_CONCLUIDO', 'EM_DIAGNOSTICO', 'AGUARDANDO_ORCAMENTO', 'AGUARDANDO_APROVACAO', 'APROVADO', 'EM_EXECUCAO', 'EM_QUALIDADE', 'AJUSTES', 'PRONTO_PARA_RETIRADA', 'FINALIZADO', 'CANCELADO'];
 
@@ -114,7 +114,12 @@ export const TOOLS_P0 = [
       km: int('Quilometragem do painel'),
       combustivel: str('Nível de combustível', { enum: ['RESERVA', 'QUARTO', 'METADE', 'TRES_QUARTOS', 'COMPLETO'] }),
       pertences: str('Pertences deixados no carro (opcional)'),
-      observacoes: str('Avarias e observações da entrada (opcional)'),
+      observacoes: str('Observações da entrada (opcional)'),
+      tem_estepe: bool('O carro tem estepe? (pergunte; não presuma)'),
+      estado_estepe: str('Estado do estepe, ex.: bom, careca, murcho (opcional)'),
+      tem_macaco: bool('O carro tem macaco?'),
+      tem_chave_roda: bool('O carro tem chave de roda?'),
+      avarias: str('Avarias que o carro já tinha na entrada: risco, amassado, farol trincado… (opcional)'),
     }, ['os_id', 'km', 'combustivel']),
   },
   {
@@ -164,6 +169,32 @@ export const TOOLS_P0 = [
     name: 'atribuir',
     description: 'Equipe: define o mecânico responsável e/ou o box da OS. Passe o nome do mecânico como a pessoa falou; se houver mais de um com esse nome, o sistema lista os candidatos: pergunte qual.',
     inputSchema: obj({ os_id: OS_ID, mecanico: str('Nome do mecânico (opcional)'), box: str('Local do carro (opcional)', { enum: ['BOX_1', 'BOX_2', 'BOX_3', 'BOX_4', 'PATIO'] }) }, ['os_id']),
+  },
+  {
+    name: 'registrar_entrega',
+    description: 'Gestão e dono: registra a entrega do carro ao cliente (km de saída, garantia e próxima revisão) e finaliza a OS se ela estava pronta para retirada. Pergunte o km de saída; garantia e revisão são opcionais (a garantia padrão vem da configuração da oficina). A entrega só pode ser registrada uma vez. Depois dela o recibo pode ser gerado com gerar_documento. Só diga que registrou se vier ok: true.',
+    inputSchema: obj({
+      os_id: OS_ID,
+      km_saida: int('Quilometragem do painel na saída'),
+      garantia_dias: int('Dias de garantia (opcional; padrão da oficina)'),
+      proxima_revisao_km: int('Km da próxima revisão sugerida (opcional)'),
+      proxima_revisao_data: date('Data da próxima revisão sugerida (opcional)'),
+    }, ['os_id', 'km_saida']),
+  },
+  {
+    name: 'consultar_placa',
+    description: 'Consulta dados públicos de uma placa (marca, modelo, ano, cor, combustível, motor, município). Use ANTES de perguntar marca e modelo: se achar, confirme com o cliente ("é um Gol 2015 prata?") antes de cadastrar. Se vier placa_indisponivel, pergunte ao cliente normalmente. Nunca invente dado de placa nem cadastre sem a confirmação dele.',
+    inputSchema: obj({ placa: PLACA }, ['placa']),
+  },
+  {
+    name: 'gerar_documento',
+    description: 'Gera um documento da oficina como arquivo para mandar no WhatsApp: orcamento (PDF com valores), ficha_entrada (PDF, estado do carro na chegada, sem valores), os_patio (imagem para o mecânico, NUNCA tem valor) ou recibo (PDF com valores e garantia). Informe a OS por os_id, placa ou numero da OS. O sistema recusa o que o papel de quem pediu não pode receber: não tente contornar. Quando vier ok: true, escreva a mensagem e, numa linha própria no fim da resposta, MEDIA:<caminho> com o caminho EXATO devolvido. Orçamento e recibo nunca vão para grupo que não seja o canal financeiro, nem para o pátio. Só diga que mandou depois do ok: true.',
+    inputSchema: obj({
+      tipo: str('Documento a gerar', { enum: ['orcamento', 'ficha_entrada', 'os_patio', 'recibo'] }),
+      os_id: OS_ID,
+      placa: PLACA,
+      numero: int('Número da OS (ex.: 42 para a OS 0042)'),
+    }, ['tipo']),
   },
 ];
 
