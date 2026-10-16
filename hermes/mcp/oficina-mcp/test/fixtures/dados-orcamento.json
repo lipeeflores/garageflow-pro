@@ -1,0 +1,178 @@
+{
+  "tipo": "orcamento",
+  "empresa": {
+    "nome": "MD Mecânica Multimarcas",
+    "cnpj": "05.887.728/0001-09",
+    "telefone": "(47) 8488-9108",
+    "endereco": "Rua 248, 721 · Meia Praia · Itapema/SC · 88220-000",
+    "email": "mdmultimarcas123@hotmail.com"
+  },
+  "config": {
+    "validade_orcamento_dias": 7,
+    "garantia_dias": 90,
+    "formas_pagamento": "PIX, cartão ou dinheiro",
+    "texto_aprovacao": null,
+    "texto_ficha": null,
+    "texto_garantia": null
+  },
+  "os": {
+    "id": "3f9a1b2c-0000-4000-8000-000000000042",
+    "numero": 42,
+    "numero_fmt": "0042",
+    "etapa": "AGUARDANDO_APROVACAO",
+    "etapa_texto": "aguardando sua aprovação do orçamento",
+    "prioridade": "ALTA",
+    "box": "BOX_2",
+    "mecanico": "Paulo",
+    "previsao_entrega": "2026-10-16T15:00:00-03:00",
+    "queixa": "Barulho metálico ao frear, mais forte de manhã. Pedal ficando baixo há uma semana.",
+    "criada_em": "2026-10-15T08:40:00-03:00",
+    "aprovada_em": null,
+    "entregue_em": null,
+    "km_saida": null,
+    "garantia_ate": null,
+    "proxima_revisao_km": null,
+    "proxima_revisao_data": null
+  },
+  "cliente": {
+    "nome": "João da Silva",
+    "telefone_fmt": "(47) 99999-0001",
+    "cpf_cnpj": "123.456.789-00",
+    "endereco": "Rua 300, 120 · Meia Praia"
+  },
+  "veiculo": {
+    "placa": "ABC1D23",
+    "marca": "Volkswagen",
+    "modelo": "Gol 1.6 MSI",
+    "ano": 2015,
+    "cor": "Prata",
+    "chassi": "9BWAB45U0FT000000"
+  },
+  "checkin": {
+    "km": 98450,
+    "combustivel": "METADE",
+    "pertences": "Cadeirinha infantil (banco traseiro), pen drive no som",
+    "observacoes": "Farol esquerdo amarelado",
+    "avarias": "Risco na porta traseira direita · farol esquerdo amarelado",
+    "tem_estepe": true,
+    "estado_estepe": "bom",
+    "tem_macaco": true,
+    "tem_chave_roda": true,
+    "recebido_por": "Márcio",
+    "em": "2026-10-15T08:40:00-03:00"
+  },
+  "fotos": [
+    {
+      "url": "fixture:frente",
+      "tipo": "CHECKIN_PHOTO",
+      "legenda": "Frente",
+      "avaria": false
+    },
+    {
+      "url": "fixture:traseira",
+      "tipo": "CHECKIN_PHOTO",
+      "legenda": "Traseira",
+      "avaria": false
+    },
+    {
+      "url": "fixture:lateral-esq",
+      "tipo": "CHECKIN_PHOTO",
+      "legenda": "Lateral esq.",
+      "avaria": false
+    },
+    {
+      "url": "fixture:lateral-dir",
+      "tipo": "CHECKIN_PHOTO",
+      "legenda": "Lateral dir.",
+      "avaria": false
+    },
+    {
+      "url": "fixture:painel",
+      "tipo": "CHECKIN_PHOTO",
+      "legenda": "Painel · 98.450 km",
+      "avaria": false
+    },
+    {
+      "url": "fixture:interior",
+      "tipo": "CHECKIN_PHOTO",
+      "legenda": "Interior",
+      "avaria": false
+    },
+    {
+      "url": "fixture:avaria-porta",
+      "tipo": "CHECKIN_PHOTO",
+      "legenda": "Avaria · porta tras. dir.",
+      "avaria": true
+    },
+    {
+      "url": "fixture:avaria-farol",
+      "tipo": "CHECKIN_PHOTO",
+      "legenda": "Avaria · farol",
+      "avaria": true
+    },
+    {
+      "url": "fixture:motor",
+      "tipo": "DIAGNOSIS_PHOTO",
+      "legenda": "Disco com sulco",
+      "avaria": false
+    }
+  ],
+  "diagnosticos": [
+    {
+      "laudo": "Pastilhas dianteiras no fim (2 mm), discos com sulco e abaixo da espessura mínima. Fluido escuro, recomenda troca.",
+      "mecanico": "Márcio",
+      "em": "2026-10-15T09:30:00-03:00"
+    }
+  ],
+  "itens": [
+    {
+      "tipo": "PART",
+      "descricao": "Pastilha de freio dianteira",
+      "codigo": "COBREQ N-1209",
+      "quantidade": 1,
+      "preco_unitario": 189,
+      "total": 189
+    },
+    {
+      "tipo": "PART",
+      "descricao": "Disco de freio dianteiro ventilado",
+      "codigo": "FREMAX BD-5210",
+      "quantidade": 2,
+      "preco_unitario": 210,
+      "total": 420
+    },
+    {
+      "tipo": "PART",
+      "descricao": "Fluido de freio DOT 4 500 ml",
+      "codigo": null,
+      "quantidade": 1,
+      "preco_unitario": 45,
+      "total": 45
+    },
+    {
+      "tipo": "SERVICE",
+      "descricao": "Troca de pastilhas e discos dianteiros",
+      "codigo": null,
+      "quantidade": 1,
+      "preco_unitario": 150,
+      "total": 150
+    },
+    {
+      "tipo": "SERVICE",
+      "descricao": "Sangria e troca do fluido de freio",
+      "codigo": null,
+      "quantidade": 1,
+      "preco_unitario": 30,
+      "total": 30
+    }
+  ],
+  "totais": {
+    "pecas": 654,
+    "mao_de_obra": 180,
+    "desconto": 0,
+    "total": 834
+  },
+  "pagamentos": [],
+  "link_aprovacao": "https://garageflow.exemplo.app/orcamento/3f9a1b2c-0000-4000-8000-000000000042?token=3F9A1B2C",
+  "validade_ate": "2026-10-22"
+}
