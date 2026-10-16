@@ -1,0 +1,220 @@
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600;700&family=Roboto+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  .v2 { --preto:#101012; --vermelho:#b3121b; --cromo:#c8ccd1; --tinta:#26262a; --cinza:#7b7b83; --linha:#dcdce1;
+        font-family:'Barlow',Arial,sans-serif; color:var(--tinta); }
+  .v2 .folha { width:794px; max-width:100%; margin:0 auto; background:#fff; box-shadow:0 10px 40px rgba(0,0,0,.35); }
+  .v2 .cond { font-family:'Barlow Condensed',Arial Narrow,sans-serif; }
+  .v2 .mono { font-family:'Roboto Mono',monospace; }
+  /* cabeçalhos */
+  .v2 .topo { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:16px 22px 12px; }
+  .v2 .topo .of { text-align:right; font-size:11px; line-height:1.55; color:#4a4a52; }
+  .v2 .topo .of strong { display:block; font-family:'Barlow Condensed',sans-serif; font-size:17px; letter-spacing:1.4px; text-transform:uppercase; color:var(--preto); }
+  .v2 .cromada { height:3px; background:linear-gradient(90deg,var(--vermelho) 0 62%,var(--cromo) 62% 100%); }
+  .v2 .logo-contorno { width:170px; filter: drop-shadow(0 0 .6px #000) drop-shadow(0 0 .6px #000) drop-shadow(0 0 .4px #000); }
+  .v2 .logo-placa { background:linear-gradient(115deg,#202026,#0d0d0f 55%,#000); border-radius:8px; padding:8px 12px; display:inline-flex; }
+  .v2 .logo-placa img { width:150px; }
+  /* título */
+  .v2 .faixa { display:flex; align-items:flex-end; justify-content:space-between; gap:18px; padding:12px 22px 10px; border-bottom:1px solid var(--linha); }
+  .v2 h1 { margin:0; font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:38px; line-height:.92; letter-spacing:2px; text-transform:uppercase; color:var(--preto); }
+  .v2 h1 span { color:var(--vermelho); }
+  .v2 .selo { display:flex; gap:20px; }
+  .v2 .selo div { font-size:10px; text-transform:uppercase; letter-spacing:1px; color:var(--cinza); }
+  .v2 .selo b { display:block; font-family:'Roboto Mono',monospace; font-size:13.5px; color:var(--preto); margin-top:3px; }
+  .v2 .status { display:inline-block; margin-top:6px; border:1.5px solid var(--vermelho); color:var(--vermelho); font-family:'Barlow Condensed',sans-serif; letter-spacing:1.4px; text-transform:uppercase; font-size:11px; padding:2px 8px; border-radius:3px; }
+  /* blocos */
+  .v2 .duplo { display:grid; grid-template-columns:1fr 1fr; border-bottom:1px solid var(--linha); }
+  .v2 .duplo > section { padding:12px 22px; }
+  .v2 .duplo > section + section { border-left:1px solid var(--linha); }
+  .v2 h2.rot { margin:0 0 8px; font-family:'Barlow Condensed',sans-serif; font-size:13px; letter-spacing:2.2px; text-transform:uppercase; color:var(--preto); font-weight:700; display:flex; align-items:center; gap:8px; }
+  .v2 h2.rot::before { content:""; width:11px; height:11px; background:var(--vermelho); flex:none; }
+  .v2 .campo { display:flex; gap:8px; font-size:12px; padding:3px 0; border-bottom:1px dotted #ccc; }
+  .v2 .campo dt { color:var(--cinza); min-width:78px; text-transform:uppercase; font-size:9.5px; letter-spacing:.8px; padding-top:2px; }
+  .v2 .campo dd { margin:0; flex:1; font-weight:500; }
+  .v2 dl { margin:0; }
+  .v2 .linha-placa { display:flex; gap:14px; align-items:flex-end; margin-top:8px; }
+  .v2 .placa { border:2px solid var(--preto); border-radius:5px; overflow:hidden; width:150px; }
+  .v2 .placa .tarja { background:#fff; border-bottom:2px solid var(--preto); color:var(--preto); font-size:8px; letter-spacing:2.6px; text-transform:uppercase; text-align:center; padding:1px 0; font-family:'Barlow Condensed',sans-serif; font-weight:700; }
+  .v2 .placa .num { font-family:'Roboto Mono',monospace; font-weight:700; font-size:21px; letter-spacing:3px; text-align:center; padding:4px 0 5px; color:var(--preto); }
+  .v2 .comb { font-size:9.5px; text-transform:uppercase; letter-spacing:.8px; color:var(--cinza); }
+  .v2 .barra { display:flex; gap:2px; margin-top:3px; }
+  .v2 .barra i { width:18px; height:8px; border:1px solid var(--preto); }
+  .v2 .barra i.on { background:var(--preto); }
+  /* entrada + fotos */
+  .v2 .bloco { padding:12px 22px 6px; }
+  .v2 .entrada { display:grid; grid-template-columns:1.25fr 1fr; gap:18px; }
+  .v2 .queixa { border:1px solid var(--linha); border-left:4px solid var(--vermelho); padding:8px 11px; font-size:12px; }
+  .v2 .queixa small { display:block; font-size:9.5px; text-transform:uppercase; letter-spacing:.8px; color:var(--cinza); margin-bottom:3px; }
+  .v2 .fotos { display:grid; grid-template-columns:repeat(3,1fr); gap:5px; }
+  .v2 .foto { position:relative; aspect-ratio:4/3; background:linear-gradient(160deg,#b9bcc2,#e9eaed 55%,#cfd2d6); border:1px solid #bbb; overflow:hidden; display:flex; align-items:center; justify-content:center; }
+  .v2 .foto svg { width:70%; opacity:.55; }
+  .v2 .foto span { position:absolute; left:0; right:0; bottom:0; background:rgba(16,16,18,.78); color:#fff; font-size:8.5px; letter-spacing:.6px; text-transform:uppercase; padding:2px 4px; font-family:'Barlow Condensed',sans-serif; }
+  .v2 .foto.avaria { border:2px solid var(--vermelho); }
+  .v2 .foto.avaria span { background:var(--vermelho); }
+  .v2 .fotos-mais { font-size:10px; color:var(--cinza); margin-top:4px; }
+  /* tabelas: cabeçalho em linha (economiza tinta) */
+  .v2 table { width:100%; border-collapse:collapse; font-size:12px; }
+  .v2 thead th { border-bottom:2px solid var(--preto); color:var(--preto); font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:11px; letter-spacing:1.4px; text-transform:uppercase; padding:5px 8px; text-align:left; }
+  .v2 th.n, .v2 td.n { text-align:right; white-space:nowrap; }
+  .v2 th.c, .v2 td.c { text-align:center; width:30px; }
+  .v2 tbody td { padding:5px 8px; border-bottom:1px solid var(--linha); }
+  .v2 tbody td.n { font-family:'Roboto Mono',monospace; font-size:11.5px; }
+  .v2 tbody td.c { color:var(--cinza); font-family:'Roboto Mono',monospace; font-size:10.5px; }
+  .v2 td small { color:var(--cinza); font-family:'Roboto Mono',monospace; font-size:9.5px; }
+  /* fechamento */
+  .v2 .fech { display:grid; grid-template-columns:1.15fr .85fr; gap:20px; padding:10px 22px 12px; align-items:start; }
+  .v2 .totais { border:1px solid var(--linha); }
+  .v2 .totais .l { display:flex; justify-content:space-between; padding:6px 12px; font-size:12px; border-bottom:1px solid var(--linha); }
+  .v2 .totais .l span:last-child { font-family:'Roboto Mono',monospace; }
+  .v2 .totais .t { border-top:2.5px solid var(--vermelho); padding:9px 12px; display:flex; justify-content:space-between; align-items:baseline; }
+  .v2 .totais .t span:first-child { font-family:'Barlow Condensed',sans-serif; letter-spacing:2px; text-transform:uppercase; font-size:14px; font-weight:700; color:var(--vermelho); }
+  .v2 .totais .t span:last-child { font-family:'Roboto Mono',monospace; font-weight:700; font-size:20px; color:var(--preto); }
+  .v2 .aprovar { display:flex; gap:12px; align-items:center; margin:0 22px 10px; border:1.5px dashed var(--vermelho); padding:9px 12px; }
+  .v2 .qr { width:62px; height:62px; flex:none; background:
+      repeating-conic-gradient(#111 0 25%,#fff 0 50%) 0 0/8px 8px; outline:3px solid #fff; box-shadow:0 0 0 1px #111; }
+  .v2 .aprovar b { font-family:'Barlow Condensed',sans-serif; letter-spacing:1.4px; text-transform:uppercase; font-size:14px; color:var(--vermelho); }
+  .v2 .aprovar p { margin:2px 0 0; font-size:11.5px; }
+  .v2 .assin { display:grid; grid-template-columns:1fr 1fr; gap:34px; padding:16px 22px 4px; }
+  .v2 .assin div { border-top:1.5px solid var(--preto); padding-top:5px; text-align:center; font-size:9.5px; letter-spacing:1.2px; text-transform:uppercase; color:var(--cinza); }
+  .v2 .aviso { padding:6px 22px 12px; font-size:10px; color:var(--cinza); line-height:1.5; margin:0; }
+  .v2 .rodape { border-top:3px solid var(--vermelho); padding:8px 22px; display:flex; justify-content:space-between; font-size:9.5px; letter-spacing:1px; text-transform:uppercase; color:#4a4a52; }
+  .v2 .rodape b { color:var(--preto); font-family:'Barlow Condensed',sans-serif; letter-spacing:2px; }
+  .v2 .tag { display:inline-block; background:#fff4d6; color:#7a5a00; border:1px solid #e9c46a; font-size:10px; padding:1px 6px; border-radius:3px; margin-left:6px; vertical-align:middle; font-family:Arial,sans-serif; letter-spacing:0; text-transform:none; font-weight:400; }
+</style>
+
+<h2>Orçamento v2: o modelo de que você gostou, com cabeçalho branco e fotos</h2>
+<p class="subtitle">Primeiro escolha como o logo fica no branco (A ou B). Embaixo, a folha inteira já preenchida como o Arnaldo mandaria. As etiquetas amarelas mostram de onde vem cada dado.</p>
+
+<div class="v2">
+  <div class="cards" style="margin-bottom:26px">
+    <div class="card" data-choice="cab-a" onclick="toggleSelect(this)">
+      <div class="card-image" style="background:#fff;padding:0">
+        <div class="topo"><img class="logo-contorno" src="/files/logo.png"><div class="of"><strong>MD Mecânica Multimarcas</strong>Rua 248, 721 · Meia Praia · Itapema/SC<br>(47) 8488-9108 · CNPJ 05.887.728/0001-09</div></div>
+        <div class="cromada"></div>
+      </div>
+      <div class="card-body"><h3>A · Tudo branco</h3><p>Zero tinta de fundo. O logo ganha um contorno fino escuro para o "Mecânica Multimarcas" aparecer no branco.</p></div>
+    </div>
+    <div class="card" data-choice="cab-b" onclick="toggleSelect(this)">
+      <div class="card-image" style="background:#fff;padding:0">
+        <div class="topo"><div class="logo-placa"><img src="/files/logo.png"></div><div class="of"><strong>MD Mecânica Multimarcas</strong>Rua 248, 721 · Meia Praia · Itapema/SC<br>(47) 8488-9108 · CNPJ 05.887.728/0001-09</div></div>
+        <div class="cromada"></div>
+      </div>
+      <div class="card-body"><h3>B · Branco com plaquinha preta só no logo</h3><p>O logo fica do jeito original, numa plaquinha escura pequena. Gasta um pouco de tinta, bem menos que o cabeçalho todo preto.</p></div>
+    </div>
+  </div>
+
+  <div class="folha">
+    <header class="topo"><div class="logo-placa"><img src="/files/logo.png"></div>
+      <div class="of"><strong>MD Mecânica Multimarcas</strong>Rua 248, 721 · Meia Praia · Itapema/SC<br>(47) 8488-9108 · mdmultimarcas123@hotmail.com<br>CNPJ 05.887.728/0001-09</div></header>
+    <div class="cromada"></div>
+
+    <div class="faixa">
+      <div><h1>Orçamento<br><span>de serviços</span></h1></div>
+      <div style="text-align:right">
+        <div class="selo"><div>Nº <b>OS-3F9A</b></div><div>Emissão <b>15/10/2026</b></div><div>Validade <b>22/10/2026</b></div></div>
+        <span class="status">Aguardando sua aprovação</span>
+      </div>
+    </div>
+
+    <div class="duplo">
+      <section>
+        <h2 class="rot">Cliente <span class="tag">customers</span></h2>
+        <dl>
+          <div class="campo"><dt>Nome</dt><dd>João da Silva</dd></div>
+          <div class="campo"><dt>WhatsApp</dt><dd>(47) 99999-0001</dd></div>
+          <div class="campo"><dt>CPF/CNPJ</dt><dd>123.456.789-00</dd></div>
+          <div class="campo"><dt>Endereço</dt><dd>Rua 300, 120 · Meia Praia</dd></div>
+        </dl>
+      </section>
+      <section>
+        <h2 class="rot">Veículo <span class="tag">vehicles + checkin</span></h2>
+        <dl>
+          <div class="campo"><dt>Marca/Modelo</dt><dd>Volkswagen Gol 1.6 MSI</dd></div>
+          <div class="campo"><dt>Ano/Cor</dt><dd>2015 · Prata</dd></div>
+          <div class="campo"><dt>KM entrada</dt><dd class="mono">98.450</dd></div>
+        </dl>
+        <div class="linha-placa">
+          <div class="placa"><div class="tarja">Brasil</div><div class="num">ABC1D23</div></div>
+          <div><div class="comb">Combustível</div><div class="barra"><i class="on"></i><i class="on"></i><i></i><i></i></div><div class="comb" style="margin-top:2px">metade</div></div>
+        </div>
+      </section>
+    </div>
+
+    <div class="bloco">
+      <h2 class="rot">Entrada do veículo <span class="tag">checkin + fotos CHECKIN_PHOTO</span></h2>
+      <div class="entrada">
+        <div>
+          <div class="queixa"><small>O que o cliente relatou · 15/10 às 08:40</small>Barulho metálico ao frear, mais forte de manhã. Pedal ficando baixo há uma semana.</div>
+          <div class="queixa" style="margin-top:6px;border-left-color:#26262a"><small>Diagnóstico do mecânico · Márcio</small>Pastilhas dianteiras no fim (2 mm), discos com sulco e abaixo da espessura mínima. Fluido escuro, recomenda troca.</div>
+          <dl style="margin-top:6px">
+            <div class="campo"><dt>Pertences</dt><dd>Estepe, macaco e chave de roda · cadeirinha no banco de trás</dd></div>
+            <div class="campo"><dt>Avarias</dt><dd>Risco na porta traseira direita (já existente)</dd></div>
+          </dl>
+        </div>
+        <div>
+          <div class="fotos">
+            <div class="foto"><svg viewBox="0 0 64 28"><path d="M4 20h56v-4l-8-2-6-7H22l-8 7-8 2z" fill="#555"/><circle cx="16" cy="21" r="4" fill="#333"/><circle cx="48" cy="21" r="4" fill="#333"/></svg><span>Frente</span></div>
+            <div class="foto"><svg viewBox="0 0 64 28"><path d="M4 20h56v-4l-8-2-6-7H22l-8 7-8 2z" fill="#555"/><circle cx="16" cy="21" r="4" fill="#333"/><circle cx="48" cy="21" r="4" fill="#333"/></svg><span>Traseira</span></div>
+            <div class="foto"><svg viewBox="0 0 64 28"><path d="M4 20h56v-4l-8-2-6-7H22l-8 7-8 2z" fill="#555"/><circle cx="16" cy="21" r="4" fill="#333"/><circle cx="48" cy="21" r="4" fill="#333"/></svg><span>Lateral esq.</span></div>
+            <div class="foto"><svg viewBox="0 0 64 28"><path d="M4 20h56v-4l-8-2-6-7H22l-8 7-8 2z" fill="#555"/><circle cx="16" cy="21" r="4" fill="#333"/><circle cx="48" cy="21" r="4" fill="#333"/></svg><span>Lateral dir.</span></div>
+            <div class="foto"><svg viewBox="0 0 64 28"><rect x="6" y="6" width="52" height="16" fill="#777"/></svg><span>Painel · 98.450 km</span></div>
+            <div class="foto avaria"><svg viewBox="0 0 64 28"><path d="M10 18 L54 10" stroke="#b3121b" stroke-width="2"/></svg><span>Avaria · porta tras. dir.</span></div>
+          </div>
+          <div class="fotos-mais">+ 3 fotos no link do orçamento</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="bloco">
+      <h2 class="rot">Peças e materiais <span class="tag">items PART + pricing</span></h2>
+      <table>
+        <thead><tr><th class="c">#</th><th>Descrição</th><th class="n">Qtd</th><th class="n">Valor unit.</th><th class="n">Total</th></tr></thead>
+        <tbody>
+          <tr><td class="c">01</td><td>Pastilha de freio dianteira <small>· COBREQ N-1209</small></td><td class="n">1 jg</td><td class="n">189,00</td><td class="n">189,00</td></tr>
+          <tr><td class="c">02</td><td>Disco de freio dianteiro ventilado <small>· FREMAX BD-5210</small></td><td class="n">2</td><td class="n">210,00</td><td class="n">420,00</td></tr>
+          <tr><td class="c">03</td><td>Fluido de freio DOT 4 500 ml</td><td class="n">1</td><td class="n">45,00</td><td class="n">45,00</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="bloco">
+      <h2 class="rot">Mão de obra <span class="tag">items SERVICE + pricing</span></h2>
+      <table>
+        <thead><tr><th class="c">#</th><th>Serviço</th><th class="n">Qtd</th><th class="n">Valor unit.</th><th class="n">Total</th></tr></thead>
+        <tbody>
+          <tr><td class="c">01</td><td>Troca de pastilhas e discos dianteiros</td><td class="n">1</td><td class="n">150,00</td><td class="n">150,00</td></tr>
+          <tr><td class="c">02</td><td>Sangria e troca do fluido de freio</td><td class="n">1</td><td class="n">30,00</td><td class="n">30,00</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="fech">
+      <div>
+        <h2 class="rot">Condições</h2>
+        <dl>
+          <div class="campo"><dt>Prazo</dt><dd>Pronto em 16/10 à tarde (após aprovação)</dd></div>
+          <div class="campo"><dt>Pagamento</dt><dd>PIX, cartão ou dinheiro</dd></div>
+          <div class="campo"><dt>Garantia</dt><dd>90 dias em peças e serviço</dd></div>
+          <div class="campo"><dt>Responsável</dt><dd>Márcio · chefe de oficina</dd></div>
+        </dl>
+      </div>
+      <div class="totais">
+        <div class="l"><span>Peças e materiais</span><span>R$ 654,00</span></div>
+        <div class="l"><span>Mão de obra</span><span>R$ 180,00</span></div>
+        <div class="l"><span>Desconto</span><span>R$ 0,00</span></div>
+        <div class="t"><span>Total</span><span>R$ 834,00</span></div>
+      </div>
+    </div>
+
+    <div class="aprovar">
+      <div class="qr"></div>
+      <div><b>Aprovar este orçamento</b><p>Aponte a câmera para o código ou responda <b style="font-size:12px;color:inherit;letter-spacing:0;text-transform:none">"aprovo"</b> para o Arnaldo no WhatsApp (47) 8488-9108. O link também mostra todas as fotos.</p></div>
+    </div>
+
+    <div class="assin"><div>Responsável técnico · MD Mecânica</div><div>Assinatura do cliente</div></div>
+    <p class="aviso">A aprovação (assinada, pelo link ou pelo WhatsApp) autoriza a execução dos serviços acima. Peças e serviços fora deste orçamento são comunicados antes e dependem de nova aprovação. Valores válidos até a data de validade.</p>
+
+    <footer class="rodape"><b>MD Mecânica Multimarcas</b><span>(47) 8488-9108 · Meia Praia · Itapema/SC</span></footer>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top:18px">O que mudou em relação ao antigo: cabeçalho e cabeçalhos de tabela sem fundo preto (o vermelho só aparece em linhas, no total e no tracejado de aprovação), seção "Entrada do veículo" com as fotos do check-in, diagnóstico do mecânico, combustível e placa, e o QR para aprovar. Me diz no chat: A ou B no logo, e o que acrescentar ou tirar.</p>

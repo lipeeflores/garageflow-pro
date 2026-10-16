@@ -1,0 +1,213 @@
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600;700&family=Roboto+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  .d { --preto:#101012; --vermelho:#b3121b; --cromo:#c8ccd1; --tinta:#26262a; --cinza:#7b7b83; --linha:#dcdce1;
+       font-family:'Barlow',Arial,sans-serif; color:var(--tinta); }
+  .d .grade { display:grid; grid-template-columns: 1fr 1fr; gap:28px; align-items:start; }
+  .d .col h3 { margin:0 0 4px; }
+  .d .col p.sub { margin:0 0 10px; font-size:13px; opacity:.75; }
+  .d .a4wrap { width:100%; overflow:hidden; }
+  .d .folha { width:794px; zoom:.52; background:#fff; box-shadow:0 10px 40px rgba(0,0,0,.35); }
+  .d .mono { font-family:'Roboto Mono',monospace; }
+  .d .topo { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:16px 22px 12px; }
+  .d .topo img { width:170px; filter: drop-shadow(0 0 .6px #000) drop-shadow(0 0 .6px #000) drop-shadow(0 0 .4px #000); }
+  .d .topo .of { text-align:right; font-size:11px; line-height:1.55; color:#4a4a52; }
+  .d .topo .of strong { display:block; font-family:'Barlow Condensed',sans-serif; font-size:17px; letter-spacing:1.4px; text-transform:uppercase; color:var(--preto); }
+  .d .cromada { height:3px; background:linear-gradient(90deg,var(--vermelho) 0 62%,var(--cromo) 62% 100%); }
+  .d .faixa { display:flex; align-items:flex-end; justify-content:space-between; gap:18px; padding:12px 22px 10px; border-bottom:1px solid var(--linha); }
+  .d h1 { margin:0; font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:38px; line-height:.92; letter-spacing:2px; text-transform:uppercase; color:var(--preto); }
+  .d h1 span { color:var(--vermelho); }
+  .d .selo { display:flex; gap:20px; }
+  .d .selo div { font-size:10px; text-transform:uppercase; letter-spacing:1px; color:var(--cinza); }
+  .d .selo b { display:block; font-family:'Roboto Mono',monospace; font-size:13.5px; color:var(--preto); margin-top:3px; }
+  .d .duplo { display:grid; grid-template-columns:1fr 1fr; border-bottom:1px solid var(--linha); }
+  .d .duplo > section { padding:12px 22px; }
+  .d .duplo > section + section { border-left:1px solid var(--linha); }
+  .d h2.rot { margin:0 0 8px; font-family:'Barlow Condensed',sans-serif; font-size:13px; letter-spacing:2.2px; text-transform:uppercase; color:var(--preto); font-weight:700; display:flex; align-items:center; gap:8px; }
+  .d h2.rot::before { content:""; width:11px; height:11px; background:var(--vermelho); flex:none; }
+  .d .campo { display:flex; gap:8px; font-size:12px; padding:3px 0; border-bottom:1px dotted #ccc; }
+  .d .campo dt { color:var(--cinza); min-width:84px; text-transform:uppercase; font-size:9.5px; letter-spacing:.8px; padding-top:2px; }
+  .d .campo dd { margin:0; flex:1; font-weight:500; }
+  .d dl { margin:0; }
+  .d .placa { border:2px solid var(--preto); border-radius:5px; overflow:hidden; width:150px; display:inline-block; }
+  .d .placa .tarja { border-bottom:2px solid var(--preto); font-size:8px; letter-spacing:2.6px; text-transform:uppercase; text-align:center; padding:1px 0; font-family:'Barlow Condensed',sans-serif; font-weight:700; }
+  .d .placa .num { font-family:'Roboto Mono',monospace; font-weight:700; font-size:21px; letter-spacing:3px; text-align:center; padding:4px 0 5px; color:var(--preto); }
+  .d .bloco { padding:12px 22px 6px; }
+  .d .check { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; }
+  .d .check div { border:1px solid var(--linha); padding:6px 8px; font-size:11.5px; }
+  .d .check small { display:block; font-size:9px; text-transform:uppercase; letter-spacing:.8px; color:var(--cinza); }
+  .d .check b { font-family:'Barlow Condensed',sans-serif; font-size:15px; letter-spacing:.5px; }
+  .d .ok { color:#1d7a3a; } .d .nok { color:var(--vermelho); }
+  .d .barra { display:flex; gap:2px; margin-top:3px; } .d .barra i { width:18px; height:8px; border:1px solid var(--preto); } .d .barra i.on { background:var(--preto); }
+  .d .fotos { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; }
+  .d .foto { position:relative; aspect-ratio:4/3; background:linear-gradient(160deg,#b9bcc2,#e9eaed 55%,#cfd2d6); border:1px solid #bbb; display:flex; align-items:center; justify-content:center; }
+  .d .foto svg { width:70%; opacity:.55; }
+  .d .foto span { position:absolute; left:0; right:0; bottom:0; background:rgba(16,16,18,.78); color:#fff; font-size:8.5px; letter-spacing:.6px; text-transform:uppercase; padding:2px 4px; font-family:'Barlow Condensed',sans-serif; }
+  .d .foto.avaria { border:2px solid var(--vermelho); } .d .foto.avaria span { background:var(--vermelho); }
+  .d .queixa { border:1px solid var(--linha); border-left:4px solid var(--vermelho); padding:8px 11px; font-size:12px; }
+  .d .queixa small { display:block; font-size:9.5px; text-transform:uppercase; letter-spacing:.8px; color:var(--cinza); margin-bottom:3px; }
+  .d table { width:100%; border-collapse:collapse; font-size:12px; }
+  .d thead th { border-bottom:2px solid var(--preto); font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:11px; letter-spacing:1.4px; text-transform:uppercase; padding:5px 8px; text-align:left; }
+  .d th.n, .d td.n { text-align:right; white-space:nowrap; }
+  .d tbody td { padding:5px 8px; border-bottom:1px solid var(--linha); }
+  .d tbody td.n { font-family:'Roboto Mono',monospace; font-size:11.5px; }
+  .d .assin { display:grid; grid-template-columns:1fr 1fr; gap:34px; padding:22px 22px 4px; }
+  .d .assin div { border-top:1.5px solid var(--preto); padding-top:5px; text-align:center; font-size:9.5px; letter-spacing:1.2px; text-transform:uppercase; color:var(--cinza); }
+  .d .aviso { padding:6px 22px 12px; font-size:10px; color:var(--cinza); line-height:1.5; margin:0; }
+  .d .rodape { border-top:3px solid var(--vermelho); padding:8px 22px; display:flex; justify-content:space-between; font-size:9.5px; letter-spacing:1px; text-transform:uppercase; color:#4a4a52; }
+  .d .rodape b { color:var(--preto); font-family:'Barlow Condensed',sans-serif; letter-spacing:2px; }
+  .d .pago { border:2.5px solid #1d7a3a; color:#1d7a3a; font-family:'Barlow Condensed',sans-serif; font-weight:700; letter-spacing:3px; font-size:22px; padding:2px 14px; transform:rotate(-6deg); display:inline-block; }
+  .d .totais { border:1px solid var(--linha); }
+  .d .totais .l { display:flex; justify-content:space-between; padding:6px 12px; font-size:12px; border-bottom:1px solid var(--linha); }
+  .d .totais .l span:last-child { font-family:'Roboto Mono',monospace; }
+  .d .totais .t { border-top:2.5px solid var(--vermelho); padding:9px 12px; display:flex; justify-content:space-between; align-items:baseline; }
+  .d .totais .t span:first-child { font-family:'Barlow Condensed',sans-serif; letter-spacing:2px; text-transform:uppercase; font-size:14px; font-weight:700; color:var(--vermelho); }
+  .d .totais .t span:last-child { font-family:'Roboto Mono',monospace; font-weight:700; font-size:20px; }
+  /* OS do pátio: imagem de celular */
+  .d .cel { width:360px; margin:0 auto; background:#fff; box-shadow:0 10px 40px rgba(0,0,0,.35); border-radius:6px; overflow:hidden; }
+  .d .cel .cab { display:flex; align-items:center; justify-content:space-between; padding:10px 14px; border-bottom:3px solid var(--vermelho); }
+  .d .cel .cab img { width:92px; filter: drop-shadow(0 0 .6px #000) drop-shadow(0 0 .6px #000); }
+  .d .cel .cab div { text-align:right; font-family:'Barlow Condensed',sans-serif; text-transform:uppercase; letter-spacing:1.5px; font-size:12px; color:var(--cinza); }
+  .d .cel .cab div b { display:block; font-size:22px; color:var(--preto); letter-spacing:1px; }
+  .d .cel .carro { padding:10px 14px; display:flex; gap:12px; align-items:center; border-bottom:1px solid var(--linha); }
+  .d .cel .carro .placa { width:130px; } .d .cel .carro .placa .num { font-size:19px; }
+  .d .cel .carro p { margin:0; font-size:14px; font-weight:600; line-height:1.25; } .d .cel .carro p small { display:block; font-weight:400; color:var(--cinza); font-size:12px; }
+  .d .cel .chips { display:flex; gap:6px; padding:10px 14px; flex-wrap:wrap; }
+  .d .cel .chip { border:1.5px solid var(--preto); border-radius:4px; padding:4px 8px; font-family:'Barlow Condensed',sans-serif; font-size:14px; letter-spacing:.8px; text-transform:uppercase; }
+  .d .cel .chip.alta { border-color:var(--vermelho); background:var(--vermelho); color:#fff; }
+  .d .cel .sec { padding:6px 14px 10px; }
+  .d .cel h4 { margin:0 0 6px; font-family:'Barlow Condensed',sans-serif; letter-spacing:2px; text-transform:uppercase; font-size:14px; display:flex; gap:7px; align-items:center; }
+  .d .cel h4::before { content:""; width:10px; height:10px; background:var(--vermelho); }
+  .d .cel ul { margin:0; padding:0; list-style:none; }
+  .d .cel li { font-size:15px; padding:6px 0 6px 26px; border-bottom:1px solid var(--linha); position:relative; line-height:1.25; }
+  .d .cel li::before { content:""; position:absolute; left:0; top:7px; width:15px; height:15px; border:2px solid var(--preto); border-radius:3px; }
+  .d .cel li small { color:var(--cinza); font-family:'Roboto Mono',monospace; font-size:11.5px; }
+  .d .cel .alerta { margin:4px 14px 12px; border-left:4px solid var(--vermelho); background:#fff3f3; padding:8px 10px; font-size:13.5px; }
+  .d .cel .pe { background:#f4f4f5; padding:8px 14px; font-size:11.5px; color:#4a4a52; display:flex; justify-content:space-between; }
+</style>
+
+<h2>Os outros três, no mesmo padrão (logo A, tudo branco)</h2>
+<p class="subtitle">Ficha de entrada e recibo em PDF A4 para o cliente. A OS do pátio como imagem de celular, que abre direto no WhatsApp do mecânico, com letra grande e sem nenhum valor.</p>
+
+<div class="d">
+  <div class="grade">
+
+    <!-- FICHA DE ENTRADA -->
+    <div class="col">
+      <h3>Ficha de entrada (check-in), PDF</h3>
+      <p class="sub">Comprova o estado em que o carro chegou. O Arnaldo manda pro cliente logo depois do check-in.</p>
+      <div class="a4wrap"><div class="folha">
+        <header class="topo"><img src="/files/logo.png"><div class="of"><strong>MD Mecânica Multimarcas</strong>Rua 248, 721 · Meia Praia · Itapema/SC<br>(47) 8488-9108 · CNPJ 05.887.728/0001-09</div></header>
+        <div class="cromada"></div>
+        <div class="faixa"><h1>Ficha de<br><span>entrada</span></h1><div class="selo"><div>OS <b>0042</b></div><div>Entrada <b>15/10 08:40</b></div><div>Recebido por <b>Márcio</b></div></div></div>
+        <div class="duplo">
+          <section><h2 class="rot">Cliente</h2><dl>
+            <div class="campo"><dt>Nome</dt><dd>João da Silva</dd></div>
+            <div class="campo"><dt>WhatsApp</dt><dd>(47) 99999-0001</dd></div>
+            <div class="campo"><dt>CPF</dt><dd>123.456.789-00</dd></div></dl></section>
+          <section><h2 class="rot">Veículo</h2><dl>
+            <div class="campo"><dt>Modelo</dt><dd>VW Gol 1.6 MSI · 2015 · Prata</dd></div>
+            <div class="campo"><dt>Chassi</dt><dd class="mono">9BWAB45U0FT000000</dd></div></dl>
+            <div style="margin-top:8px"><div class="placa"><div class="tarja">Brasil</div><div class="num">ABC1D23</div></div></div></section>
+        </div>
+        <div class="bloco"><h2 class="rot">Conferência</h2>
+          <div class="check">
+            <div><small>KM no painel</small><b class="mono" style="font-size:14px">98.450</b></div>
+            <div><small>Combustível</small><div class="barra"><i class="on"></i><i class="on"></i><i></i><i></i></div><span style="font-size:10px">metade</span></div>
+            <div><small>Estepe</small><b class="ok">Sim · bom</b></div>
+            <div><small>Macaco / chave</small><b class="ok">Sim / Sim</b></div>
+          </div>
+          <dl style="margin-top:6px">
+            <div class="campo"><dt>Pertences</dt><dd>Cadeirinha infantil (banco traseiro), pen drive no som</dd></div>
+            <div class="campo"><dt>Avarias</dt><dd style="color:#b3121b">Risco na porta traseira direita · farol esquerdo amarelado</dd></div>
+          </dl>
+        </div>
+        <div class="bloco"><h2 class="rot">Fotos da entrada · 8</h2>
+          <div class="fotos">
+            <div class="foto"><svg viewBox="0 0 64 28"><path d="M4 20h56v-4l-8-2-6-7H22l-8 7-8 2z" fill="#555"/></svg><span>Frente</span></div>
+            <div class="foto"><svg viewBox="0 0 64 28"><path d="M4 20h56v-4l-8-2-6-7H22l-8 7-8 2z" fill="#555"/></svg><span>Traseira</span></div>
+            <div class="foto"><svg viewBox="0 0 64 28"><path d="M4 20h56v-4l-8-2-6-7H22l-8 7-8 2z" fill="#555"/></svg><span>Lateral esq.</span></div>
+            <div class="foto"><svg viewBox="0 0 64 28"><path d="M4 20h56v-4l-8-2-6-7H22l-8 7-8 2z" fill="#555"/></svg><span>Lateral dir.</span></div>
+            <div class="foto"><svg viewBox="0 0 64 28"><rect x="6" y="6" width="52" height="16" fill="#777"/></svg><span>Painel · km</span></div>
+            <div class="foto"><svg viewBox="0 0 64 28"><rect x="10" y="4" width="44" height="20" fill="#777"/></svg><span>Interior</span></div>
+            <div class="foto avaria"><svg viewBox="0 0 64 28"><path d="M10 18 L54 10" stroke="#b3121b" stroke-width="2"/></svg><span>Avaria · porta</span></div>
+            <div class="foto avaria"><svg viewBox="0 0 64 28"><circle cx="32" cy="14" r="9" fill="#d9c27a"/></svg><span>Avaria · farol</span></div>
+          </div></div>
+        <div class="bloco"><h2 class="rot">O que o cliente relatou</h2><div class="queixa">Barulho metálico ao frear, mais forte de manhã. Pedal ficando baixo há uma semana.</div></div>
+        <div class="assin"><div>Recebido por · MD Mecânica</div><div>Cliente</div></div>
+        <p class="aviso">O cliente confere que o veículo foi entregue nas condições acima. A MD não se responsabiliza por objetos não listados em "Pertences".</p>
+        <footer class="rodape"><b>MD Mecânica Multimarcas</b><span>(47) 8488-9108 · Itapema/SC</span></footer>
+      </div></div>
+    </div>
+
+    <!-- RECIBO -->
+    <div class="col">
+      <h3>Entrega e recibo, PDF</h3>
+      <p class="sub">Quando o carro sai: o que foi feito, quanto foi pago, a garantia até quando.</p>
+      <div class="a4wrap"><div class="folha">
+        <header class="topo"><img src="/files/logo.png"><div class="of"><strong>MD Mecânica Multimarcas</strong>Rua 248, 721 · Meia Praia · Itapema/SC<br>(47) 8488-9108 · CNPJ 05.887.728/0001-09</div></header>
+        <div class="cromada"></div>
+        <div class="faixa"><h1>Recibo e<br><span>entrega</span></h1><div style="text-align:right"><div class="selo"><div>OS <b>0042</b></div><div>Entrega <b>16/10 17:10</b></div></div><div style="margin-top:8px"><span class="pago">PAGO</span></div></div></div>
+        <div class="duplo">
+          <section><h2 class="rot">Cliente</h2><dl>
+            <div class="campo"><dt>Nome</dt><dd>João da Silva</dd></div>
+            <div class="campo"><dt>CPF</dt><dd>123.456.789-00</dd></div></dl></section>
+          <section><h2 class="rot">Veículo</h2><dl>
+            <div class="campo"><dt>Modelo</dt><dd>VW Gol 1.6 MSI · 2015</dd></div>
+            <div class="campo"><dt>Placa</dt><dd class="mono">ABC1D23</dd></div>
+            <div class="campo"><dt>KM saída</dt><dd class="mono">98.462</dd></div></dl></section>
+        </div>
+        <div class="bloco"><h2 class="rot">Serviços realizados</h2>
+          <table><thead><tr><th>Descrição</th><th class="n">Qtd</th><th class="n">Total</th></tr></thead><tbody>
+            <tr><td>Pastilha de freio dianteira · COBREQ N-1209</td><td class="n">1 jg</td><td class="n">189,00</td></tr>
+            <tr><td>Disco de freio dianteiro ventilado · FREMAX BD-5210</td><td class="n">2</td><td class="n">420,00</td></tr>
+            <tr><td>Fluido de freio DOT 4 500 ml</td><td class="n">1</td><td class="n">45,00</td></tr>
+            <tr><td>Troca de pastilhas e discos dianteiros</td><td class="n">1</td><td class="n">150,00</td></tr>
+            <tr><td>Sangria e troca do fluido de freio</td><td class="n">1</td><td class="n">30,00</td></tr>
+          </tbody></table></div>
+        <div class="bloco" style="display:grid;grid-template-columns:1.1fr .9fr;gap:20px;align-items:start">
+          <div><h2 class="rot">Pagamento</h2><dl>
+            <div class="campo"><dt>Forma</dt><dd>PIX</dd></div>
+            <div class="campo"><dt>Data</dt><dd>16/10/2026 17:05</dd></div>
+            <div class="campo"><dt>Recebido por</dt><dd>Simone</dd></div></dl>
+            <h2 class="rot" style="margin-top:12px">Garantia</h2>
+            <div class="queixa"><small>Válida até</small><b style="font-family:'Roboto Mono',monospace;font-size:15px">14/01/2027</b> · 90 dias em peças e serviço</div>
+          </div>
+          <div class="totais">
+            <div class="l"><span>Peças</span><span>R$ 654,00</span></div>
+            <div class="l"><span>Mão de obra</span><span>R$ 180,00</span></div>
+            <div class="l"><span>Desconto</span><span>R$ 0,00</span></div>
+            <div class="t"><span>Total pago</span><span>R$ 834,00</span></div>
+          </div>
+        </div>
+        <div class="bloco"><h2 class="rot">Próxima revisão sugerida</h2><div class="queixa" style="border-left-color:#26262a">Troca de óleo e filtro em 108.450 km ou abril/2027. O Arnaldo lembra você pelo WhatsApp.</div></div>
+        <div class="assin"><div>MD Mecânica</div><div>Retirado por</div></div>
+        <p class="aviso">A garantia cobre defeito das peças e do serviço listados. Não cobre mau uso, acidente ou serviço feito por terceiros no mesmo item.</p>
+        <footer class="rodape"><b>MD Mecânica Multimarcas</b><span>Obrigado pela confiança · (47) 8488-9108</span></footer>
+      </div></div>
+    </div>
+  </div>
+
+  <!-- OS DO PÁTIO -->
+  <div style="margin-top:34px">
+    <h3 style="margin:0 0 4px">OS do pátio, imagem no WhatsApp do mecânico</h3>
+    <p class="sub" style="margin:0 0 12px;font-size:13px;opacity:.75">Letra grande, checklist pra marcar com o dedo e sem valor nenhum. É a mesma OS que aparece na TV do pátio.</p>
+    <div class="cel">
+      <div class="cab"><img src="/files/logo.png"><div>Ordem de serviço<b>OS 0042</b></div></div>
+      <div class="carro"><div class="placa"><div class="tarja">Brasil</div><div class="num">ABC1D23</div></div><p>VW Gol 1.6 MSI<small>2015 · Prata · 98.450 km</small></p></div>
+      <div class="chips"><span class="chip alta">Prioridade alta</span><span class="chip">Box 2</span><span class="chip">Mec: Paulo</span><span class="chip">Entrega 16/10 15h</span></div>
+      <div class="sec"><h4>O que fazer</h4><ul>
+        <li>Trocar pastilhas dianteiras</li>
+        <li>Trocar discos dianteiros (par)</li>
+        <li>Sangria e troca do fluido de freio</li>
+        <li>Teste de rodagem e pedal</li></ul></div>
+      <div class="sec"><h4>Peças</h4><ul>
+        <li>Pastilha diant. <small>COBREQ N-1209 · 1 jg</small></li>
+        <li>Disco ventilado <small>FREMAX BD-5210 · 2</small></li>
+        <li>Fluido DOT 4 <small>500 ml · 1</small></li></ul></div>
+      <div class="alerta"><b>Atenção:</b> cliente relatou pedal baixo. Conferir cilindro mestre antes de liberar. Cadeirinha no banco de trás, não tirar do carro.</div>
+      <div class="pe"><span>Aprovado 15/10 10:12</span><span>Dúvida? Fala com o Arnaldo</span></div>
+    </div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top:22px">Diga no chat o que muda em cada um. Itens que hoje não existem no sistema e precisariam entrar: número de OS sequencial (0042), estepe/macaco/chave como campos próprios (hoje vão no texto de pertences), km de saída, garantia e próxima revisão.</p>
