@@ -2,8 +2,11 @@
 
 Habilitado SOMENTE em profiles/arnaldo-md-mecanica/config.yaml (plugins.enabled).
 
-- pre_gateway_dispatch: pausa de manutenção, silêncio em grupo, DEBOUNCE (30s cliente /
-  4s equipe) e neutralização de comandos "/".
+- pre_gateway_dispatch: pausa de manutenção (a equipe no privado passa), silêncio em grupo,
+  DEBOUNCE (30s cliente; equipe sem espera), neutralização de comandos "/" e áudio ligado
+  por padrão para a equipe.
+- pre_tool_call: na 1ª ferramenta do sistema do turno, frase fixa de "um instante".
+- gateway._send_voice_reply (embrulho): o áudio sai DEPOIS do texto, em segundo plano.
 - pre_llm_call: injeta data/hora e QUEM fala (pelo número) + a muralha de sigilo financeiro.
 - pre_tool_call: só leitura + MCP `oficina` passam; a chamada do MCP leva o chamador assinado (HMAC).
 - transform_llm_output: tira markdown que o WhatsApp mostraria cru e barra valor/margem
@@ -144,16 +147,24 @@ def _pausa_libera(event: Any) -> bool:
     """Exceção da pausa: chats listados em <perfil>/PAUSA_EXCETO (um JID por linha) passam.
 
     15/10/2026: o Lipe quis o Arnaldo ativo SÓ no grupo MD Gerência enquanto o resto segue pausado.
+    16/10/2026: no privado, quem está no equipe.json também passa. O 1º contato de alguém novo da
+    equipe chega como @lid, que não dá para pôr no arquivo antes (caso do José, do pátio).
     """
     try:
-        chat = str(getattr(getattr(event, "source", None), "chat_id", "") or "").strip()
+        source = getattr(event, "source", None)
+        chat = str(getattr(source, "chat_id", "") or "").strip()
         if not chat:
             return False
-        with open(os.path.join(_home(), "PAUSA_EXCETO"), encoding="utf-8") as fh:
-            liberados = {linha.strip() for linha in fh if linha.strip() and not linha.startswith("#")}
-        return chat in liberados
-    except FileNotFoundError:
-        return False
+        try:
+            with open(os.path.join(_home(), "PAUSA_EXCETO"), encoding="utf-8") as fh:
+                liberados = {linha.strip() for linha in fh if linha.strip() and not linha.startswith("#")}
+        except FileNotFoundError:
+            liberados = set()
+        if chat in liberados:
+            return True
+        if getattr(source, "chat_type", "dm") != "dm":
+            return False
+        return core.papel_de(_phone_from_source(source, event), _equipe()) in core.EQUIPE_PAPEIS
     except Exception:
         return False
 
@@ -310,6 +321,104 @@ def _humano_deve_descartar(event: Any) -> bool:
     return True
 
 
+# ── Mais rápido para quem espera (16/10) ─────────────────────────────────────
+# 1) Aviso de espera: na 1ª ferramenta do sistema de cada turno sai uma frase curta
+#    ("Claro! Só um instante...") e só depois a resposta de verdade.
+# 2) Áudio depois do texto: o Hermes gera o TTS ANTES de mandar o texto (run_turn.py,
+#    _hmwa_deliver_turn_response), o que atrasava o texto em ~3 s. O áudio vai para segundo plano.
+# 3) Equipe recebe áudio + texto por padrão (como o Márcio pediu), sem precisar listar o @lid.
+_vivo = {"loop": None, "adapter": None}
+_turnos_lock = threading.Lock()
+_turnos: dict = {}           # session_id -> {"t0": ts, "avisou": bool}
+_TURNO_TTL = 900.0
+_voz_tarefas: set = set()    # referência forte: task sem dono pode ser coletada no meio
+_ATRASO_VOZ_S = 1.0          # o texto sai primeiro mesmo se o TTS for instantâneo
+
+
+def _turno_comecou(session_id: str) -> None:
+    if not session_id:
+        return
+    agora = time.time()
+    with _turnos_lock:
+        for sid in [s for s, t in _turnos.items() if agora - t["t0"] > _TURNO_TTL]:
+            _turnos.pop(sid, None)
+        _turnos[session_id] = {"t0": agora, "avisou": False}
+
+
+def _marcar_aviso(session_id: str) -> bool:
+    """True só na 1ª vez do turno (e só se o turno foi aberto pelo pre_llm_call)."""
+    with _turnos_lock:
+        turno = _turnos.get(session_id)
+        if turno is None or turno["avisou"]:
+            return False
+        turno["avisou"] = True
+        return True
+
+
+def _avisar_espera(session_id: str, tool_name: str) -> None:
+    """Manda a frase de espera para o chat da sessão sem segurar a ferramenta."""
+    texto = core.aviso_de_espera(tool_name)
+    if not texto or not session_id:
+        return
+    row = _session_row(session_id)
+    if not row or "whatsapp" not in str(row[0] or "").lower() or not row[3]:
+        return  # CLI/teste: nada a avisar
+    loop, adapter = _vivo["loop"], _vivo["adapter"]
+    if loop is None or adapter is None or loop.is_closed():
+        return
+    if not _marcar_aviso(session_id):
+        return
+    _approve(texto)  # passa pela mesma trava de saída que todo o resto
+
+    def _resultado(fut):
+        try:
+            fut.result()
+        except Exception as exc:
+            logger.warning("aviso de espera não saiu: %s", exc)
+
+    asyncio.run_coroutine_threadsafe(adapter.send(row[3], texto), loop).add_done_callback(_resultado)
+    logger.info("arnaldo aviso de espera (%s) para %s", tool_name, row[3])
+
+
+def _voz_depois_do_texto(gateway: Any) -> None:
+    if gateway is None or getattr(gateway, "_arnaldo_voz_depois", False):
+        return
+    orig = getattr(gateway, "_send_voice_reply", None)
+    if not callable(orig):
+        logger.warning("gateway sem _send_voice_reply: áudio continua ANTES do texto")
+        return
+
+    async def _em_segundo_plano(event, text):
+        async def _tarefa():
+            await asyncio.sleep(_ATRASO_VOZ_S)
+            await orig(event, text)
+
+        tarefa = asyncio.get_running_loop().create_task(_tarefa())
+        _voz_tarefas.add(tarefa)
+        tarefa.add_done_callback(_voz_tarefas.discard)
+
+    gateway._send_voice_reply = _em_segundo_plano
+    gateway._arnaldo_voz_depois = True
+    logger.info("arnaldo: áudio sai depois do texto")
+
+
+def _voz_padrao_equipe(gateway: Any, source: Any, papel: str) -> None:
+    """Conversa da equipe sem modo de voz definido passa a ter áudio + texto (e fica gravado)."""
+    if papel not in core.EQUIPE_PAPEIS or gateway is None:
+        return
+    modos = getattr(gateway, "_voice_mode", None)
+    chave_de = getattr(gateway, "_voice_key_for_source", None)
+    aplicar = getattr(gateway, "_apply_voice_mode", None)
+    adapter = _vivo["adapter"]
+    if not isinstance(modos, dict) or not callable(chave_de) or not callable(aplicar) or adapter is None:
+        return
+    chave = chave_de(source)
+    if chave in modos:
+        return  # alguém já escolheu (inclusive "off")
+    aplicar(adapter, chave, source.chat_id, "all")
+    logger.info("arnaldo: áudio ligado para a equipe em %s", chave)
+
+
 def _guard_adapter(adapter: Any) -> None:
     """Embrulha o adapter do WhatsApp (idempotente): só texto aprovado sai."""
     if adapter is None or getattr(adapter, "_arnaldo_guarded", False):
@@ -318,6 +427,7 @@ def _guard_adapter(adapter: Any) -> None:
     orig_handle = getattr(adapter, "handle_message", None)
 
     async def handle_message(event, *args, **kw):
+        _vivo["loop"] = asyncio.get_running_loop()
         try:
             if _humano_deve_descartar(event):
                 return None
@@ -357,6 +467,7 @@ def _guard_adapter(adapter: Any) -> None:
         if hasattr(adapter, name):
             setattr(adapter, name, caption_filter(getattr(adapter, name)))
     adapter._arnaldo_guarded = True
+    _vivo["adapter"] = adapter
     logger.info("arnaldo trava instalada em %s", type(adapter).__name__)
 
 
@@ -364,6 +475,11 @@ def _guard_gateway(gateway: Any) -> None:
     for platform, adapter in list((getattr(gateway, "adapters", None) or {}).items()):
         if "whatsapp" in str(getattr(platform, "value", platform)).lower():
             _guard_adapter(adapter)
+            _vivo["adapter"] = adapter
+    try:
+        _voz_depois_do_texto(gateway)
+    except Exception as exc:
+        logger.warning("áudio depois do texto não instalado: %s", exc)
 
 
 # ── Hooks ────────────────────────────────────────────────────────────────────
@@ -414,13 +530,17 @@ def on_pre_gateway_dispatch(event: Any = None, gateway: Any = None, session_stor
         reescrito = {"action": "rewrite", "text": neutro} if neutro is not None else None
         if gateway is None:
             return reescrito
+        phone = _phone_from_source(source, event)
+        papel = core.papel_de(phone, _equipe())
+        try:
+            _voz_padrao_equipe(gateway, source, papel)
+        except Exception as exc:
+            logger.warning("áudio padrão da equipe falhou: %s", exc)
         if not espera.eh_texto(event):
             # Foto, áudio, documento: solta o que estava esperando e segue o fluxo normal.
             _espera.soltar_agora(chave)
             return reescrito
 
-        phone = _phone_from_source(source, event)
-        papel = core.papel_de(phone, _equipe())
         espera_s = core.debounce_seconds(papel)
         if espera_s > 0 and _espera.segurar(chave, event, gateway, espera_s, texto=texto):
             return {"action": "skip", "reason": f"arnaldo: juntando mensagens ({papel})"}
@@ -436,6 +556,7 @@ def on_pre_gateway_dispatch(event: Any = None, gateway: Any = None, session_stor
 
 
 def on_pre_llm_call(session_id: str = "", platform: str = "", user_message: Any = "", **_: Any):
+    _turno_comecou(session_id)
     try:
         from datetime import datetime
         from zoneinfo import ZoneInfo
@@ -451,10 +572,16 @@ def on_pre_llm_call(session_id: str = "", platform: str = "", user_message: Any 
 def on_pre_tool_call(tool_name: str = "", args: Any = None, session_id: str = "", **_: Any):
     try:
         identity = _identity_for_session(session_id)
-        return core.decide_tool_call(
+        decisao = core.decide_tool_call(
             tool_name, args if isinstance(args, dict) else {}, session_id, identity,
             core.papel_de(identity, _equipe()), os.environ.get("ARNALDO_CALLER_SECRET", ""),
         )
+        if decisao.get("action") in ("allow", "modify"):
+            try:
+                _avisar_espera(session_id, tool_name)
+            except Exception as exc:
+                logger.warning("aviso de espera falhou: %s", exc)
+        return decisao
     except Exception as exc:
         logger.warning("pre_tool_call falhou: %s", exc)
         return {"action": "block", "message": "Falha ao validar a ação; nada foi executado."}

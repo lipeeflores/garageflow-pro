@@ -24,6 +24,7 @@ CLIENTE = "cliente"
 DESCONHECIDO = "desconhecido"
 
 VE_DINHEIRO = frozenset({DONO, GESTAO})
+EQUIPE_PAPEIS = frozenset({DONO, GESTAO, PATIO})
 
 
 def normalize_br_phone(raw: Optional[str]) -> Optional[str]:
@@ -363,6 +364,30 @@ def decide_tool_call(
     novos.pop("caller", None)  # nunca confiar no que o modelo mandou
     novos["caller"] = caller_envelope(identity, session_id, secret, now_ms)
     return {"action": "modify", "args": novos}
+
+
+# -- Aviso de espera ----------------------------------------------------------
+# 16/10 (Lipe): quando o Arnaldo vai ao sistema, a resposta leva de 15 a 35 s (ferramenta + mais
+# uma volta do modelo). Antes disso sai uma frase curta, uma vez por turno. Texto fixo, decidido
+# aqui: não depende do modelo lembrar e não tem como vazar valor.
+
+AVISO_PADRAO = "Claro! Só um instante que já vejo aqui no sistema."
+AVISOS = {
+    "gerar_documento": "Claro! Já estou preparando o documento, só um instante.",
+    "consultar_placa": "Claro! Vou puxar os dados da placa, só um instante.",
+    "anexar_foto": "Recebi! Já estou guardando a foto no sistema, só um instante.",
+}
+SEM_AVISO = frozenset({"quem_sou"})  # rápida e invisível para quem fala
+
+
+def aviso_de_espera(tool_name: str) -> Optional[str]:
+    """Frase de "um instante" para a ferramenta do sistema; None para o que não merece aviso."""
+    if not (tool_name or "").startswith(TOOL_PREFIX):
+        return None
+    nome = tool_name[len(TOOL_PREFIX):]
+    if nome in SEM_AVISO:
+        return None
+    return AVISOS.get(nome, AVISO_PADRAO)
 
 
 # -- Humano assumiu -----------------------------------------------------------

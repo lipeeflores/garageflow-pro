@@ -23,6 +23,9 @@ OFICINA = {
         "ARNALDO_API_URL": "${ARNALDO_API_URL}",
         "ARNALDO_API_TOKEN": "${ARNALDO_API_TOKEN}",
         "ARNALDO_SUPABASE_ANON": "${ARNALDO_SUPABASE_ANON}",
+        # 15/10: liga as ferramentas da fase 1 (28 no total). Ficou só no servidor e o deploy de
+        # 16/10 apagou; sem ela o Arnaldo volta a ter só as ferramentas antigas no próximo reinício.
+        "ARNALDO_ENABLE_P1": "1",
     },
     "timeout": 40,
     "connect_timeout": 30,
