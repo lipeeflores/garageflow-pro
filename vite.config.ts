@@ -69,6 +69,8 @@ export default defineConfig(({ mode }) => ({
       },
       workbox: {
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+        // O bundle principal passou de 2 MiB (padrão do workbox) e o build fora do Lovable quebrava.
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,

@@ -42,47 +42,49 @@ const parseGatewayJson = (content: string): TranscriptionPayload => {
   }
 };
 
-const normalizeAudioFormat = (mimeType: string, fileName: string) => {
-  const source = `${mimeType}|${fileName}`.toLowerCase();
+// 16/10/2026: saiu do AI gateway do Lovable para o Groq (grátis): Whisper transcreve, gpt-oss reescreve.
+const GROQ_URL = "https://api.groq.com/openai/v1";
+const STT_MODEL = "whisper-large-v3-turbo";
+const LLM_MODEL = "openai/gpt-oss-120b";
+// Ajuda o Whisper com os termos de oficina (mesma ideia do STT do Arnaldo).
+const STT_PROMPT =
+  "Parecer de mecânico da MD Mecânica. Pastilha, disco de freio, correia dentada, tensor, coxim, " +
+  "amortecedor, embreagem, junta homocinética, bieleta, bandeja, terminal de direção, velas, bobina, " +
+  "injetor, sonda lambda, catalisador, radiador, bomba d'água, válvula termostática, óleo, filtro.";
 
-  if (source.includes("webm")) return "webm";
-  if (source.includes("wav")) return "wav";
-  if (source.includes("mp3") || source.includes("mpeg")) return "mp3";
-  if (source.includes("mp4") || source.includes("m4a") || source.includes("aac")) return "mp4";
-  if (source.includes("ogg") || source.includes("oga")) return "ogg";
-
-  return "webm";
+const groq = async (path: string, init: RequestInit, apiKey: string) => {
+  const response = await fetch(`${GROQ_URL}${path}`, {
+    ...init,
+    headers: { ...(init.headers || {}), "Authorization": `Bearer ${apiKey}` },
+  });
+  const raw = await response.text();
+  if (!response.ok) {
+    throw new HttpError(response.status === 429 ? 429 : 502, `Groq: ${raw || response.statusText}`);
+  }
+  try {
+    return JSON.parse(raw);
+  } catch {
+    throw new HttpError(502, "Resposta inválida da IA");
+  }
 };
 
-const callAiGateway = async (body: Record<string, unknown>, apiKey: string) => {
-  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+const refinar = async (system: string, user: string, fallback: string, apiKey: string) => {
+  const data = await groq("/chat/completions", {
     method: "POST",
-    headers: {
-      "Authorization": `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-  });
-
-  const raw = await response.text();
-
-  if (!response.ok) {
-    throw new HttpError(response.status, `AI Gateway error: ${raw || response.statusText}`);
-  }
-
-  let parsedResponse: any;
-  try {
-    parsedResponse = JSON.parse(raw);
-  } catch {
-    throw new HttpError(502, "Resposta inválida do AI Gateway");
-  }
-
-  const content = parsedResponse?.choices?.[0]?.message?.content;
-  if (!content) {
-    throw new HttpError(502, "Resposta vazia do AI Gateway");
-  }
-
-  return parseGatewayJson(content);
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: LLM_MODEL,
+      messages: [{ role: "system", content: system }, { role: "user", content: user }],
+      temperature: 0.2,
+      max_completion_tokens: 2000,
+      reasoning_effort: "low",
+      response_format: { type: "json_object" },
+    }),
+  }, apiKey);
+  const content = data?.choices?.[0]?.message?.content;
+  if (!content) throw new HttpError(502, "Resposta vazia da IA");
+  const parsed = parseGatewayJson(content);
+  return parsed.transcription_refined || fallback;
 };
 
 const transcribeFromAudio = async (
@@ -92,29 +94,18 @@ const transcribeFromAudio = async (
 ) => {
   console.log(`Processing audio file: ${audioFile.name}, size: ${audioFile.size}`);
 
-  const arrayBuffer = await audioFile.arrayBuffer();
-  const bytes = new Uint8Array(arrayBuffer);
+  const form = new FormData();
+  form.append("file", audioFile, audioFile.name || "audio.webm");
+  form.append("model", STT_MODEL);
+  form.append("language", "pt");
+  form.append("response_format", "json");
+  form.append("prompt", technicalContext ? `${STT_PROMPT} Veículo: ${technicalContext}`.slice(0, 800) : STT_PROMPT);
+  const stt = await groq("/audio/transcriptions", { method: "POST", body: form }, apiKey);
+  const raw = String(stt?.text || "").trim();
+  if (!raw) throw new HttpError(422, "Não deu para entender o áudio");
 
-  let binary = "";
-  const chunkSize = 8192;
-  for (let i = 0; i < bytes.length; i += chunkSize) {
-    const chunk = bytes.subarray(i, i + chunkSize);
-    binary += String.fromCharCode(...chunk);
-  }
-
-  const base64Audio = btoa(binary);
-  const mimeType = audioFile.type || "audio/webm";
-  const audioFormat = normalizeAudioFormat(mimeType, audioFile.name);
-
-  return callAiGateway(
-    {
-      model: "google/gemini-2.5-flash",
-      messages: [
-        {
-          role: "system",
-          content: `Você é um assistente especializado em mecânica automotiva. Sua tarefa é:
-1. Transcrever fielmente o áudio do mecânico
-2. Em seguida, criar uma versão refinada e profissional do parecer técnico para enviar ao cliente
+  const refined = await refinar(
+    `Você é um assistente especializado em mecânica automotiva. Recebe a transcrição do áudio de um mecânico e cria uma versão refinada e profissional do parecer técnico para enviar ao cliente.
 
 O parecer refinado deve:
 - Usar linguagem técnica mas acessível
@@ -122,38 +113,23 @@ O parecer refinado deve:
 - Manter todas as informações técnicas importantes
 - Organizar em tópicos se necessário
 - Remover hesitações, repetições e linguagem informal
+- Não inventar defeitos ou peças
 
 Responda em JSON com o formato:
 {
-  "transcription_raw": "transcrição literal do áudio",
   "transcription_refined": "parecer técnico refinado para o cliente"
 }`,
-        },
-        {
-          role: "user",
-          content: [
-            {
-              type: "text",
-              text: technicalContext
-                ? `Contexto do veículo: ${technicalContext}\n\nTranscreva e refine o seguinte áudio do mecânico:`
-                : "Transcreva e refine o seguinte áudio do mecânico:",
-            },
-            {
-              type: "input_audio",
-              input_audio: {
-                data: base64Audio,
-                format: audioFormat,
-              },
-            },
-          ],
-        },
-      ],
-      temperature: 0.2,
-      max_tokens: 2000,
-      response_format: { type: "json_object" },
-    },
+    technicalContext
+      ? `Contexto do veículo: ${technicalContext}
+
+Transcrição do áudio do mecânico:
+${raw}`
+      : `Transcrição do áudio do mecânico:
+${raw}`,
+    raw,
     apiKey,
   );
+  return { transcription_raw: raw, transcription_refined: refined };
 };
 
 const refineTextDiagnosis = async (
@@ -161,13 +137,8 @@ const refineTextDiagnosis = async (
   technicalContext: string,
   apiKey: string,
 ) => {
-  const result = await callAiGateway(
-    {
-      model: "google/gemini-2.5-flash",
-      messages: [
-        {
-          role: "system",
-          content: `Você é um assistente técnico automotivo. Reescreva o texto enviado por um mecânico de forma profissional e clara, mantendo o significado técnico.
+  const refined = await refinar(
+    `Você é um assistente técnico automotivo. Reescreva o texto enviado por um mecânico de forma profissional e clara, mantendo o significado técnico.
 
 Regras:
 - Não invente defeitos ou peças
@@ -176,28 +147,20 @@ Regras:
 
 Responda em JSON com:
 {
-  "transcription_raw": "texto original",
   "transcription_refined": "texto refinado"
 }`,
-        },
-        {
-          role: "user",
-          content: technicalContext
-            ? `Contexto do veículo: ${technicalContext}\n\nTexto do mecânico:\n${technicalReport}`
-            : `Texto do mecânico:\n${technicalReport}`,
-        },
-      ],
-      temperature: 0.1,
-      max_tokens: 1200,
-      response_format: { type: "json_object" },
-    },
+    technicalContext
+      ? `Contexto do veículo: ${technicalContext}
+
+Texto do mecânico:
+${technicalReport}`
+      : `Texto do mecânico:
+${technicalReport}`,
+    technicalReport,
     apiKey,
   );
 
-  return {
-    transcription_raw: result.transcription_raw || technicalReport,
-    transcription_refined: result.transcription_refined || technicalReport,
-  };
+  return { transcription_raw: technicalReport, transcription_refined: refined };
 };
 
 serve(async (req) => {
@@ -207,9 +170,9 @@ serve(async (req) => {
   }
 
   try {
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new HttpError(500, "LOVABLE_API_KEY not configured");
+    const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
+    if (!GROQ_API_KEY) {
+      throw new HttpError(500, "GROQ_API_KEY not configured");
     }
 
     const contentType = req.headers.get("content-type") || "";
@@ -238,8 +201,8 @@ serve(async (req) => {
     }
 
     const parsed = audioFile
-      ? await transcribeFromAudio(audioFile, technicalContext, LOVABLE_API_KEY)
-      : await refineTextDiagnosis(technicalReport, technicalContext, LOVABLE_API_KEY);
+      ? await transcribeFromAudio(audioFile, technicalContext, GROQ_API_KEY)
+      : await refineTextDiagnosis(technicalReport, technicalContext, GROQ_API_KEY);
 
     console.log("Transcription completed successfully");
 
