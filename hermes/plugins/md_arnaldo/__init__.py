@@ -8,6 +8,8 @@ Habilitado SOMENTE em profiles/arnaldo-md-mecanica/config.yaml (plugins.enabled)
 - pre_tool_call: na 1ª ferramenta do sistema do turno, frase fixa de "um instante".
 - gateway._send_voice_reply (embrulho): o áudio sai DEPOIS do texto, em segundo plano.
 - pre_llm_call: injeta data/hora e QUEM fala (pelo número) + a muralha de sigilo financeiro.
+- Papel (dono/gestao/patio/cliente): cadastro do garageflow (arnaldo-api, ação quem_sou, cache de
+  10 min, cadastro.py) com o equipe.json de reforço e de reserva quando a API falha.
 - pre_tool_call: só leitura + MCP `oficina` passam; a chamada do MCP leva o chamador assinado (HMAC).
 - transform_llm_output: tira markdown que o WhatsApp mostraria cru e barra valor/margem
   quando quem fala é do pátio.
@@ -28,7 +30,7 @@ import threading
 import time
 from typing import Any, Optional
 
-from . import core, espera
+from . import cadastro, core, espera
 
 logger = logging.getLogger("md_arnaldo")
 
@@ -82,6 +84,53 @@ def _equipe() -> dict:
 
 def _grupos() -> dict:
     return _carregar()[1]
+
+
+# ── Cadastro do sistema (garageflow, ação quem_sou) ──────────────────────────
+# 16/10: o papel também vem do cadastro do sistema. Ver cadastro.py e core.combinar_papel:
+# sistema com papel de equipe vale; senão (cliente, falha, sem configuração) vale o equipe.json.
+
+def _api_configurada() -> bool:
+    return all(os.environ.get(k) for k in ("ARNALDO_API_URL", "ARNALDO_API_TOKEN", "ARNALDO_CALLER_SECRET"))
+
+
+def _consultar_api(phone: str) -> dict:
+    return cadastro.consultar_quem_sou(
+        phone,
+        url=os.environ.get("ARNALDO_API_URL", ""),
+        token=os.environ.get("ARNALDO_API_TOKEN", ""),
+        segredo=os.environ.get("ARNALDO_CALLER_SECRET", ""),
+        anon=os.environ.get("ARNALDO_SUPABASE_ANON", ""),
+    )
+
+
+_cadastro = cadastro.Cadastro(_consultar_api, logger, ativo=_api_configurada)
+
+
+def _fora_do_loop() -> bool:
+    """True quando esta thread não roda um event loop (dá para esperar a API bloqueando)."""
+    try:
+        asyncio.get_running_loop()
+        return False
+    except RuntimeError:
+        return True
+
+
+def _indice(identity: Optional[str], bloquear: bool = False) -> dict:
+    """Quem é quem para ``identity``: o equipe.json ajustado pelo cadastro do sistema.
+
+    ``bloquear``: com o cache vencido e fora do loop, espera a consulta (no máximo cadastro.TIMEOUT_S).
+    No loop nunca bloqueia: vale o que estiver no cache (o pre_gateway_dispatch já esperou por ele).
+    """
+    sistema = None
+    try:
+        if bloquear and _fora_do_loop():
+            sistema = _cadastro.garantir_bloqueando(identity)
+        else:
+            sistema = _cadastro.ler(identity)
+    except Exception as exc:
+        logger.warning("arnaldo cadastro: leitura falhou (%s); vale o equipe.json", exc)
+    return core.indice_com_sistema(identity, _equipe(), sistema)
 
 
 def _aliases(identifier: str):
@@ -164,7 +213,8 @@ def _pausa_libera(event: Any) -> bool:
             return True
         if getattr(source, "chat_type", "dm") != "dm":
             return False
-        return core.papel_de(_phone_from_source(source, event), _equipe()) in core.EQUIPE_PAPEIS
+        phone = _phone_from_source(source, event)
+        return core.papel_de(phone, _indice(phone)) in core.EQUIPE_PAPEIS
     except Exception:
         return False
 
@@ -313,7 +363,7 @@ def _humano_deve_descartar(event: Any) -> bool:
         return True
     if not em_controle:
         return False
-    if core.papel_de(chave, _equipe()) != core.CLIENTE:
+    if core.papel_de(chave, _indice(chave)) != core.CLIENTE:
         return False  # equipe falando com o Arnaldo pelo próprio número é outra conversa
     texto = getattr(event, "text", "") or "[mídia]"
     _humano_auditar("silencio_humano", getattr(source, "chat_id", ""))
@@ -485,6 +535,36 @@ def _guard_gateway(gateway: Any) -> None:
 # ── Hooks ────────────────────────────────────────────────────────────────────
 
 def on_pre_gateway_dispatch(event: Any = None, gateway: Any = None, session_store: Any = None, **_: Any):
+    """Antes de decidir (pausa, espera, áudio), o papel de quem manda tem de estar no cache.
+
+    Cache vencido: devolve uma corrotina, que o Hermes aguarda no próprio loop (``ainvoke_hook``
+    aguarda o que o gancho devolver), então só ESTA mensagem espera a API (no máximo
+    cadastro.TIMEOUT_S) e as outras conversas seguem. Sem loop rodando, decide na hora com o
+    equipe.json e consulta em segundo plano.
+    """
+    try:
+        source = getattr(event, "source", None)
+        plataforma = getattr(getattr(source, "platform", None), "value", None) or str(getattr(source, "platform", ""))
+        if "whatsapp" in str(plataforma).lower():
+            phone = _phone_from_source(source, event)
+            if phone and not _cadastro.fresco(phone):
+                if not _fora_do_loop():
+                    return _consultar_e_despachar(phone, event, gateway)
+                _cadastro.ler(phone)  # dispara a consulta em segundo plano
+    except Exception as exc:
+        logger.warning("arnaldo cadastro: consulta antes do despacho falhou (%s); vale o equipe.json", exc)
+    return _despachar(event, gateway)
+
+
+async def _consultar_e_despachar(phone: str, event: Any, gateway: Any):
+    try:
+        await _cadastro.garantir(phone)
+    except Exception as exc:
+        logger.warning("arnaldo cadastro: espera da consulta falhou (%s); vale o equipe.json", exc)
+    return _despachar(event, gateway)
+
+
+def _despachar(event: Any = None, gateway: Any = None):
     try:
         if gateway is not None:
             _guard_gateway(gateway)
@@ -531,7 +611,7 @@ def on_pre_gateway_dispatch(event: Any = None, gateway: Any = None, session_stor
         if gateway is None:
             return reescrito
         phone = _phone_from_source(source, event)
-        papel = core.papel_de(phone, _equipe())
+        papel = core.papel_de(phone, _indice(phone))
         try:
             _voz_padrao_equipe(gateway, source, papel)
         except Exception as exc:
@@ -563,7 +643,7 @@ def on_pre_llm_call(session_id: str = "", platform: str = "", user_message: Any 
 
         identity, grupo = _quem_e_onde(session_id)
         agora = datetime.now(ZoneInfo("America/Sao_Paulo"))
-        return {"context": core.turn_context(identity, _equipe(), agora, grupo, _grupos())}
+        return {"context": core.turn_context(identity, _indice(identity, bloquear=True), agora, grupo, _grupos())}
     except Exception as exc:
         logger.warning("pre_llm_call falhou: %s", exc)
         return None
@@ -574,7 +654,7 @@ def on_pre_tool_call(tool_name: str = "", args: Any = None, session_id: str = ""
         identity = _identity_for_session(session_id)
         decisao = core.decide_tool_call(
             tool_name, args if isinstance(args, dict) else {}, session_id, identity,
-            core.papel_de(identity, _equipe()), os.environ.get("ARNALDO_CALLER_SECRET", ""),
+            core.papel_de(identity, _indice(identity, bloquear=True)), os.environ.get("ARNALDO_CALLER_SECRET", ""),
         )
         if decisao.get("action") in ("allow", "modify"):
             try:
@@ -610,7 +690,7 @@ def on_transform_llm_output(response_text: str = "", session_id: str = "", platf
         limpo = core.sanitize_whatsapp(response_text) if is_whatsapp else response_text
         if is_whatsapp:
             identity, grupo = _quem_e_onde(session_id)
-            papel = core.papel_de(identity, _equipe())
+            papel = core.papel_de(identity, _indice(identity, bloquear=True))
             limpo, vazou = core.filtrar_saida(limpo, papel, grupo, _grupos())
             if vazou:
                 _auditar("sigilo_financeiro", session_id, response_text)
@@ -654,3 +734,4 @@ def register(ctx) -> None:
     ctx.register_hook("pre_tool_call", on_pre_tool_call)
     ctx.register_hook("transform_llm_output", on_transform_llm_output)
     threading.Thread(target=_guard_future_adapters, name="arnaldo-guard-install", daemon=True).start()
+    logger.info("arnaldo cadastro: papel pelo sistema %s", "LIGADO" if _api_configurada() else "desligado (sem ARNALDO_API_*): só equipe.json")

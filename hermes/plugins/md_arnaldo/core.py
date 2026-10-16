@@ -123,6 +123,56 @@ def ve_dinheiro(papel: str) -> bool:
     return papel in VE_DINHEIRO
 
 
+# -- Cadastro do sistema (garageflow) -----------------------------------------
+# 16/10: o papel também vem da arnaldo-api (ação quem_sou: profiles.phone + user_roles). O Lipe
+# cadastra a equipe pelo sistema e não quer manter lista em dois lugares. O equipe.json fica de
+# reforço (gente que ainda não tem telefone no sistema) e de reserva quando a API não responde.
+
+PAPEIS_DO_SISTEMA = frozenset({DONO, GESTAO, PATIO, CLIENTE})
+
+
+def papel_do_sistema(corpo) -> dict:
+    """{papel, nome} da resposta do quem_sou. Fora do combinado => ValueError (= sistema não respondeu).
+
+    "sistema" ou papel desconhecido nunca viram equipe: só valem os quatro papéis de pessoa.
+    """
+    if not isinstance(corpo, dict) or corpo.get("ok") is not True or not isinstance(corpo.get("dados"), dict):
+        raise ValueError(f"resposta inesperada do quem_sou: {str(corpo)[:160]}")
+    dados = corpo["dados"]
+    papel = str(dados.get("papel") or "").strip().lower()
+    if papel not in PAPEIS_DO_SISTEMA:
+        raise ValueError(f"papel desconhecido no quem_sou: {papel!r}")
+    nome = dados.get("nome")
+    return {"papel": papel, "nome": nome.strip() if isinstance(nome, str) else ""}
+
+
+def combinar_papel(sistema: Optional[dict], local: Optional[dict]) -> Optional[dict]:
+    """Quem é a pessoa, juntando o cadastro do sistema e o equipe.json.
+
+    1. O sistema respondeu com papel de equipe -> vale o do sistema (é lá que o Lipe cadastra).
+    2. O sistema disse cliente, falhou ou nem foi consultado -> vale o equipe.json (reforço).
+    3. Nenhum dos dois -> None (cliente).
+    O sistema nunca rebaixa quem está no equipe.json, e falha nunca promove ninguém.
+    """
+    if sistema and sistema.get("papel") in EQUIPE_PAPEIS:
+        nome = sistema.get("nome") or (local or {}).get("nome") or ""
+        return {"nome": nome, "papel": sistema["papel"], "fonte": "sistema"}
+    return local
+
+
+def indice_com_sistema(identity: Optional[str], indice: dict, sistema: Optional[dict]) -> dict:
+    """O índice do equipe.json com a pessoa ``identity`` ajustada pelo cadastro do sistema."""
+    if not identity or identity == SYSTEM:
+        return indice
+    local = indice.get(identity)
+    pessoa = combinar_papel(sistema, local)
+    if pessoa is local:
+        return indice
+    novo = dict(indice)
+    novo[identity] = pessoa
+    return novo
+
+
 def grupos_index(grupos: dict) -> dict:
     """{jid: {nome, financeiro}}. ``financeiro`` so vale se for exatamente True."""
     out = {}

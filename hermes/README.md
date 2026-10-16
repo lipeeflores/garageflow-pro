@@ -9,7 +9,7 @@ fica em `supabase/functions/arnaldo-api/` (edge function). Plano completo:
 | aqui no repo | no servidor (`/dados/hermes-agent-1/config/profiles/arnaldo-md-mecanica/`) | o que é |
 |---|---|---|
 | `hermes/arnaldo/SOUL.md` | `SOUL.md` | personalidade e regras de conduta |
-| `hermes/arnaldo/equipe.json` | `equipe.json` | quem é quem pelo número (muralha de sigilo do plugin). **Só versionado como referência: o do servidor é o que vale** (o Lipe preenche na Parte C) |
+| `hermes/arnaldo/equipe.json` | `equipe.json` | reforço de quem é quem pelo número e config dos grupos (`financeiro`, `responder_tudo`). Desde 16/10 o papel vem primeiro do **cadastro do garageflow** (ver "Papel pelo sistema"). **Só versionado como referência: o do servidor é o que vale** |
 | `hermes/arnaldo/README.md` | `README.md` | README antigo do perfil (cópia) |
 | `hermes/arnaldo/skills/md-mecanica/*` | `skills/md-mecanica/*` | procedimentos: atendimento-cliente, agenda, checkin-e-os, gestao-financeiro, documentos |
 | `hermes/plugins/md_arnaldo/` | `plugins/md_arnaldo/` | blindagem: papel por número, sigilo de valor, debounce, trava de saída, **chamador assinado (HMAC)** nas ferramentas, **"humano assumiu"** |
@@ -60,7 +60,7 @@ Com `WHATSAPP_FORWARD_OWNER_MESSAGES=true`, o que a Simone digita pelo celular d
 
 - descarta a mensagem do dono (**nunca** vira turno), registra o chat em `humano-assumiu.json` e audita `humano_assumiu` em `humano-auditoria.jsonl`;
 - enquanto houver registro com menos de 4 h (`HUMANO_TTL_S`) e do mesmo dia (meia-noite de Brasília), descarta as mensagens do cliente nesse chat, audita `silencio_humano` e guarda o texto em `humano-feed.jsonl`;
-- equipe (papel diferente de cliente, via `equipe.json`) nunca é silenciada; grupo não se aplica.
+- equipe (papel diferente de cliente, pelo sistema ou pelo `equipe.json`) nunca é silenciada; grupo não se aplica.
 
 Não há comando para liberar. **Ligar a flag só depois de o plugin estar carregado** (`agent.log`: `arnaldo trava instalada`);
 sem isso a mensagem da Simone vira turno do Arnaldo.
@@ -118,3 +118,18 @@ Container do Gotenberg: `bash hermes/server/md-gotenberg.sh` (no servidor, ou `s
 - O Hermes pode recolocar skills de upstream a cada `hermes update`: rodar `hermes skills list` e repetir a poda.
 - O filtro de saída do plugin (`filtrar_saida`) já não trata a palavra "orçamento" como vazamento (o Arnaldo manda o link do
   orçamento ao cliente). Segue barrando número em reais, `%`, margem, lucro, faturamento e desconto para quem não vê dinheiro.
+
+## Papel pelo sistema (16/10)
+
+O plugin `md_arnaldo` pergunta à arnaldo-api (`quem_sou`, assinado por HMAC como o MCP; `cadastro.py`)
+o papel de quem fala: telefone em `profiles.phone` + `user_roles` (ADMIN = dono, MANAGER = gestao,
+MECHANIC = patio). **Cadastrar um mecânico com telefone no garageflow basta**; não é preciso mexer no `equipe.json`.
+
+- Precedência (`core.combinar_papel`): sistema com papel de equipe vale; sistema dizendo cliente, falha
+  ou API sem configuração => vale o `equipe.json`. O sistema não rebaixa quem está no `equipe.json`
+  (para tirar alguém, tire dos dois) e falha nunca promove ninguém.
+- Cache por telefone de 10 min (falha guardada 60 s). Cache vencido: o `pre_gateway_dispatch` devolve
+  uma corrotina que o Hermes aguarda no loop (timeout de 3 s), então só aquela mensagem espera.
+- Log: `arnaldo cadastro: <telefone> = patio (<nome>) pelo sistema` quando o sistema promove alguém;
+  `arnaldo cadastro: quem_sou de ... falhou` quando cai no `equipe.json`; no boot,
+  `arnaldo cadastro: papel pelo sistema LIGADO`.
