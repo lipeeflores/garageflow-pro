@@ -17,20 +17,21 @@ Tudo é registrado por ferramenta. Só confirme algo à equipe quando a ferramen
 
 ## 1. Receber o carro (check-in)
 
-1. Identifique o carro: `buscar` (placa, nome ou telefone) ou `ver_os` com a placa. Cliente/carro novo: `cadastrar_cliente_veiculo` (com o `telefone` do cliente, que a equipe informa).
+1. Identifique o carro: `buscar` (placa, nome ou telefone) ou `ver_os` com a placa. Cliente/carro novo: use `consultar_placa` **antes** de perguntar marca e modelo ("achei um Gol 2015 prata, é esse?"), confirme com quem está na conversa e então `cadastrar_cliente_veiculo` (com o `telefone` do cliente, que a equipe informa). Se a consulta falhar, pergunte marca e modelo normalmente.
 2. Se a pessoa chegou com horário marcado, ache o agendamento em `agenda_do_dia`.
 3. **Abra a OS**: `abrir_os` com `placa`, `queixa` (nas palavras do cliente) e `agendamento_id` se houver (o agendamento vira "chegou"). Prioridade e previsão só se a equipe disser. Antes, confirme que não existe OS aberta do mesmo carro (`ver_os`).
 4. Conduza a vistoria, **uma coisa por vez**:
    1. Nome do cliente, placa, modelo e ano.
    2. Quilometragem do painel.
    3. Nível de combustível (reserva, 1/4, meio, 3/4, cheio).
-   4. Estepe, macaco e chave de roda: tem, não tem, estado.
+   4. Estepe (tem? em que estado: bom, careca, murcho), macaco (tem?) e chave de roda (tem?): **pergunte cada um**, não presuma.
    5. Pertences dentro do carro (documentos, som, cadeirinha, ferramenta) e o que fica.
    6. Fotos em volta (frente, traseira, duas laterais) e de perto de cada avaria já existente.
    7. O que o cliente relatou.
 5. Confirme o resumo com quem faz o check-in.
-6. **Registre**: `registrar_checkin` com `os_id`, `km`, `combustivel` (RESERVA, QUARTO, METADE, TRES_QUARTOS, COMPLETO), `pertences` (estepe/macaco/pertences) e `observacoes` (avarias e relato). Cada OS tem um único check-in; se o sistema disser que já existe, não tente de novo.
+6. **Registre**: `registrar_checkin` com `os_id`, `km`, `combustivel` (RESERVA, QUARTO, METADE, TRES_QUARTOS, COMPLETO), `tem_estepe` e `estado_estepe`, `tem_macaco`, `tem_chave_roda`, `pertences` (o que fica no carro), `avarias` (o que o carro já tinha: risco, amassado…) e `observacoes`. Cada OS tem um único check-in; se o sistema disser que já existe, não tente de novo. Se a resposta trouxer um aviso de que estepe/macaco/chave foram para o texto dos pertences, está certo: o sistema ainda estava recebendo os campos novos.
 7. **Fotos**: cada foto que chegar no WhatsApp durante o check-in vai com `anexar_foto` (`os_id`, `tipo` CHECKIN_PHOTO, `caminho_imagem` = o caminho do arquivo que o Hermes mostrou para a imagem, exatamente como veio, e `legenda` curta, ex.: "lateral esquerda, risco na porta"). Foto de diagnóstico: DIAGNOSIS_PHOTO; de serviço feito: EXECUTION_PHOTO. Só diga "anexei" com `ok: true`.
+8. **Ficha de entrada**: depois de registrar o check-in e anexar as fotos, gere a ficha em PDF (`gerar_documento`, tipo `ficha_entrada`, skill `documentos`) e mande na conversa. As fotos anexadas à OS entram na ficha.
 
 ## 2. Diagnóstico e itens
 
@@ -44,7 +45,13 @@ Tudo é registrado por ferramenta. Só confirme algo à equipe quando a ferramen
 - `mover_etapa` com `os_id`, `etapa` e `observacao` (fica no histórico). O pátio anda só nas etapas do pátio: check-in concluído, em diagnóstico, aguardando orçamento, em execução, em qualidade, e de ajustes de volta para execução. Aprovar orçamento, finalizar e cancelar são da gestão e do dono. Se o sistema recusar a etapa, explique à equipe quem pode e não tente de outro jeito.
 - `atribuir`: mecânico responsável (nome como a pessoa falou) e/ou box (BOX_1 a BOX_4, PATIO). Nome que casa com mais de um: pergunte qual.
 
-## 4. Fala com o pátio
+## 4. OS do pátio e entrega
+
+- Orçamento aprovado (ou o Seu Márcio pediu): gere a **OS do pátio** (`gerar_documento`, tipo `os_patio`, imagem sem valor) para a equipe do pátio. É a única que o pátio recebe.
+- Entrega do carro (gestão/dono): pergunte o **km de saída** (e, se quiserem, dias de garantia e a próxima revisão por km ou data), registre com `registrar_entrega` e gere o recibo (`gerar_documento`, tipo `recibo`). O recibo só existe com pagamento registrado ou OS finalizada. Detalhes na skill `documentos`.
+- A OS pode ser dita pelo número ("OS 42"): `os_id` aceita o número.
+
+## 5. Fala com o pátio
 
 Resposta rápida e prática (viva-voz, mão suja). OS, checklist, peças a instalar, prazo, box e prioridade: pode tudo. Valor, orçamento, desconto, margem: nada.
 

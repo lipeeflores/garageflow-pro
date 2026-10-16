@@ -11,9 +11,10 @@ fica em `supabase/functions/arnaldo-api/` (edge function). Plano completo:
 | `hermes/arnaldo/SOUL.md` | `SOUL.md` | personalidade e regras de conduta |
 | `hermes/arnaldo/equipe.json` | `equipe.json` | quem é quem pelo número (muralha de sigilo do plugin). **Só versionado como referência: o do servidor é o que vale** (o Lipe preenche na Parte C) |
 | `hermes/arnaldo/README.md` | `README.md` | README antigo do perfil (cópia) |
-| `hermes/arnaldo/skills/md-mecanica/*` | `skills/md-mecanica/*` | procedimentos: atendimento-cliente, agenda, checkin-e-os, gestao-financeiro |
+| `hermes/arnaldo/skills/md-mecanica/*` | `skills/md-mecanica/*` | procedimentos: atendimento-cliente, agenda, checkin-e-os, gestao-financeiro, documentos |
 | `hermes/plugins/md_arnaldo/` | `plugins/md_arnaldo/` | blindagem: papel por número, sigilo de valor, debounce, trava de saída, **chamador assinado (HMAC)** nas ferramentas, **"humano assumiu"** |
-| `hermes/mcp/oficina-mcp/` | `mcp/oficina-mcp/` | MCP stdio `oficina`: cada ferramenta vira um POST na `arnaldo-api` |
+| `hermes/mcp/oficina-mcp/` | `mcp/oficina-mcp/` | MCP stdio `oficina`: cada ferramenta vira um POST na `arnaldo-api`; `gerar_documento` e `consultar_placa` rodam no próprio MCP (`documentos.mjs`, `placa.mjs`, `templates/`) |
+| `hermes/server/md-gotenberg.sh` | (container `md-gotenberg`) | Chromium dedicado a HTML → PDF/PNG; recria o container igual, idempotente |
 | `hermes/scripts/config_oficina.py` | (roda dentro do container) | acrescenta `mcp_servers.oficina` e `compression.threshold_tokens: 60000` ao `config.yaml` |
 | `hermes/scripts/deploy-arnaldo.sh` | — | instala tudo isso no perfil, com backup |
 | `hermes/scripts/poda-skills-arnaldo.sh` | — | move (não apaga) as skills genéricas |
@@ -28,6 +29,8 @@ bash hermes/scripts/poda-skills-arnaldo.sh   # tar de backup + move skills gené
 ```
 
 O deploy **não** reinicia gateway, **não** mexe em `.env` nem em `PAUSA` e nunca faz `rm -rf` em `skills/`.
+
+**Trava contra pisar edição feita no servidor:** o deploy grava `.deploy-arnaldo.sha256` no perfil (hash do que instalou). Na vez seguinte, se algum desses arquivos mudou no servidor (alguém editou o plugin direto), ele **aborta** e lista os arquivos. Copie a mudança do servidor para o `hermes/` do repo e rode de novo (ou `FORCE=1 bash hermes/scripts/deploy-arnaldo.sh`; o backup guarda a versão do servidor). Isso existe porque em 15/10 um deploy quase desfez o `responder_tudo`/`PAUSA_EXCETO` que tinham sido postos à mão no servidor.
 O plugin só é recarregado no próximo reinício do gateway (Parte C). Backups: `/dados/backups/arnaldo-<carimbo>.tgz`
 (SOUL, config, .env, plugins, skills/md-mecanica, mcp), `config.yaml.bak-oficina-<carimbo>` no perfil,
 `skills.bak-<data>.tgz` e `skills.removidas-<data>/` no perfil.
@@ -70,10 +73,10 @@ P=/root/.hermes/profiles/arnaldo-md-mecanica
 # plugin (pytest, dentro do container)
 $S "sudo docker exec -w $P/plugins/md_arnaldo -e PYTHONDONTWRITEBYTECODE=1 hermes-agent-1 python -m pytest -q -p no:cacheprovider"
 # MCP (node --test, dentro do container)
-$S "sudo docker exec -w $P/mcp/oficina-mcp hermes-agent-1 /root/.hermes/node/bin/node --test test/server.test.mjs"
-# o MCP sobe e lista as 19 ferramentas (não passa pelo plugin!)
+$S "sudo docker exec -w $P/mcp/oficina-mcp hermes-agent-1 sh -c '/root/.hermes/node/bin/node --test test/*.test.mjs'"
+# o MCP sobe e lista as 22 ferramentas (não passa pelo plugin!)
 $S "sudo docker exec hermes-agent-1 hermes --profile arnaldo-md-mecanica mcp test oficina"
-# skills vistas pelo Hermes (esperado: 4 md-mecanica + rotinas-e-lembretes)
+# skills vistas pelo Hermes (esperado: 5 md-mecanica + rotinas-e-lembretes; o Hermes pode recolocar a 'github' de upstream)
 $S "sudo docker exec hermes-agent-1 hermes --profile arnaldo-md-mecanica skills list"
 ```
 
@@ -83,6 +86,29 @@ Localmente (Windows): `cd hermes/plugins/md_arnaldo && python -m pytest -q` (pre
 `hermes mcp test` **não prova** que o plugin libera `mcp__oficina__*`: isso só se prova com um turno de verdade
 (`hermes --profile arnaldo-md-mecanica chat --source cli`, com `ARNALDO_TEST_MODE=1` e `ARNALDO_TEST_CALLER`).
 Não use `-q` sozinho: vira sessão `oneshot` e ignora a variável.
+
+## Documentos (orçamento, ficha, OS do pátio, recibo)
+
+Spec: `docs/superpowers/specs/2026-10-15-documentos-md-design.md`. O MCP `oficina` tem duas ferramentas locais:
+
+- `gerar_documento(tipo, os_id | numero | placa)`: chama `dados_documento` na API (mesmo `caller` assinado), monta o HTML do modelo
+  (`templates/*.mjs`, funções puras; fontes e logo em base64, QR do orçamento com o pacote `qrcode`), converte no Gotenberg
+  (`http://md-gotenberg:3000`, PDF A4 ou PNG de 1080 px) e grava em **`<perfil>/cache/documents/`**. O Arnaldo responde com
+  `MEDIA:<caminho>` numa linha própria e o Hermes manda o arquivo. Nome do arquivo: `Orcamento-OS0042-MD-Mecanica.pdf`
+  (sobrescreve na regeneração; a limpeza de 30 dias só mexe nos nossos).
+- `consultar_placa(placa)`: curl via `execFile` em `tabelafipebrasil.com/placa/<PLACA>`, cache de 30 dias em `cache/placas/`.
+
+**Por que `cache/documents` e não `cache/documentos`:** as pastas `<perfil>/cache/{images,audio,videos,documents,screenshots}` são as que o Hermes
+entrega **sempre** por `MEDIA:` (`validate_media_delivery_path` em `gateway/platforms/base.py`). Hoje o modo padrão também deixa passar outras pastas
+fora da lista de negados (testado em 15/10: `cache/documentos` entregaria), mas com `HERMES_MEDIA_DELIVERY_STRICT=1` só o cache vale.
+
+Gerar os 4 exemplos pelo Gotenberg real, a partir das fixtures (sem API, sem WhatsApp), de dentro do container:
+
+```bash
+node scripts/gerar-exemplo.mjs /tmp/documentos-exemplo   # em <perfil>/mcp/oficina-mcp; GOTENBERG_URL muda o endereço
+```
+
+Container do Gotenberg: `bash hermes/server/md-gotenberg.sh` (no servidor, ou `ssh ... 'bash -s' < hermes/server/md-gotenberg.sh`). Sem porta publicada.
 
 ## Armadilhas
 

@@ -27,10 +27,29 @@ tar czf - -C "$HERE" \
   | "${SSH[@]}" "tar xzf - -C '$STAGE'"
 
 echo ">> instalando no servidor (com backup)"
-"${SSH[@]}" "sudo bash -s -- '$TS' '$STAGE' '$P'" <<'REMOTE'
+"${SSH[@]}" "sudo bash -s -- '$TS' '$STAGE' '$P' '${FORCE:-0}'" <<'REMOTE'
 set -euo pipefail
-TS="$1"; S="$2"; P="$3"
+TS="$1"; S="$2"; P="$3"; FORCE="$4"
+MANIFESTO="$P/.deploy-arnaldo.sha256"
 mkdir -p /dados/backups
+
+# Trava contra pisar edicao feita direto no servidor (ja aconteceu: 15/10, o deploy quase desfez o
+# responder_tudo). O manifesto guarda o hash do que o ultimo deploy instalou; se o servidor mudou
+# desde entao, aborta. Traga a mudanca para o repo (copie o arquivo do servidor) e rode de novo,
+# ou use FORCE=1 se tiver certeza.
+if [ -f "$MANIFESTO" ]; then
+  if ! (cd "$P" && sha256sum -c --quiet "$MANIFESTO" >/tmp/deploy-arnaldo-divergencia.txt 2>&1); then
+    echo "ATENCAO: arquivos do servidor mudaram desde o ultimo deploy:" >&2
+    sed 's/: FAILED.*//' /tmp/deploy-arnaldo-divergencia.txt | grep -v "^sha256sum" >&2 || true
+    if [ "$FORCE" != "1" ]; then
+      echo "Abortado. Copie essas mudancas para o repo (hermes/) e rode de novo, ou FORCE=1 bash hermes/scripts/deploy-arnaldo.sh" >&2
+      exit 3
+    fi
+    echo "FORCE=1: seguindo mesmo assim (o backup guarda a versao do servidor)" >&2
+  fi
+else
+  echo "aviso: sem manifesto do ultimo deploy; nao deu para conferir edicoes feitas no servidor" >&2
+fi
 # Backup do que sera sobrescrito (so entra o que existe).
 ITENS=()
 for f in SOUL.md config.yaml .env plugins skills/md-mecanica mcp; do [ -e "$P/$f" ] && ITENS+=("$f"); done
@@ -43,6 +62,10 @@ cp -r "$S/plugins/md_arnaldo/." "$P/plugins/md_arnaldo/"
 cp -r "$S/mcp/oficina-mcp/." "$P/mcp/oficina-mcp/"
 cp -r "$S/arnaldo/skills/md-mecanica/." "$P/skills/md-mecanica/"
 echo "arquivos copiados"
+
+# Manifesto do que foi instalado agora (so codigo e texto do Arnaldo; nao entra .env, config.yaml nem equipe.json).
+(cd "$P" && sha256sum SOUL.md plugins/md_arnaldo/*.py plugins/md_arnaldo/plugin.yaml mcp/oficina-mcp/*.mjs   mcp/oficina-mcp/templates/*.mjs skills/md-mecanica/*/SKILL.md > "$MANIFESTO")
+echo "manifesto: $MANIFESTO ($(wc -l < "$MANIFESTO") arquivos)"
 REMOTE
 
 echo ">> npm ci (node do Hermes, dentro do container)"
